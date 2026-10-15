@@ -118,12 +118,22 @@ export async function syncFreshiozStoreFromServer() {
     if (res && res.ok) {
       const serverData = await res.json();
       if (serverData && typeof serverData === 'object' && Array.isArray(serverData.categories)) {
+        const currentLocal = getFreshiozStore();
+        const mergedOrders = (Array.isArray(serverData.orders) && serverData.orders.length > 0)
+          ? serverData.orders
+          : (currentLocal.orders || []);
+
+        const mergedData = {
+          ...serverData,
+          orders: mergedOrders,
+        };
+
         const localRaw = localStorage.getItem(STORAGE_KEY);
-        const serverRaw = JSON.stringify(serverData);
-        if (localRaw !== serverRaw) {
-          localStorage.setItem(STORAGE_KEY, serverRaw);
-          window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: serverData }));
-          return serverData;
+        const mergedRaw = JSON.stringify(mergedData);
+        if (localRaw !== mergedRaw) {
+          localStorage.setItem(STORAGE_KEY, mergedRaw);
+          window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: mergedData }));
+          return mergedData;
         }
       }
     }

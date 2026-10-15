@@ -6,7 +6,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 export async function apiClient(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   
-  const token = localStorage.getItem('freshioz_auth_token') || localStorage.getItem('freshioz_user_token');
+  const token = localStorage.getItem('freshioz_user_token') || localStorage.getItem('freshioz_partner_token') || localStorage.getItem('freshioz_auth_token');
   const headers = { ...options.headers };
 
   if (token && !headers['Authorization'] && !headers['authorization']) {

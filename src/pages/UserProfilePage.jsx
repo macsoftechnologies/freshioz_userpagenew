@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   User, 
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { saveFreshiozStore } from '../shared/freshiozStore';
+import { orderService } from '../services/orderService';
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
@@ -114,12 +115,61 @@ export default function UserProfilePage() {
     );
   }
 
-  // Filter orders belonging to this user
-  const userOrders = store.orders.filter(o => 
-    o.userPhone === activeUser.phone || 
-    o.userId === activeUser.phone || 
-    o.userId === activeUser.id || 
-    (activeUser.phone === '9845012345' && (o.userId === 'user-1' || o.userPhone === '9845012345'))
+  // Live order fetching from backend REST API
+  const [apiOrders, setApiOrders] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveOrders() {
+      if (!activeUser?.phone) return;
+      setIsLoadingOrders(true);
+      try {
+        const res = await orderService.getAll({ phone: activeUser.phone });
+        if (isMounted && Array.isArray(res)) {
+          setApiOrders(res);
+          // Sync into local store so offline cache and tabs have full orders
+          saveFreshiozStore(prev => {
+            const existing = prev.orders || [];
+            const otherOrders = existing.filter(o => 
+              o.userPhone !== activeUser.phone && 
+              o.userId !== activeUser.phone && 
+              o.userId !== activeUser.id
+            );
+            return {
+              ...prev,
+              orders: [...res, ...otherOrders]
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('Live orders fetch note:', err?.message || err);
+      } finally {
+        if (isMounted) setIsLoadingOrders(false);
+      }
+    }
+    fetchLiveOrders();
+    return () => { isMounted = false; };
+  }, [activeUser?.phone, activeUser?.id]);
+
+  // Combine live API orders and local store orders (deduplicated by id)
+  const combinedOrdersMap = new Map();
+  (store.orders || []).forEach(o => {
+    if (
+      o.userPhone === activeUser.phone || 
+      o.userId === activeUser.phone || 
+      o.userId === activeUser.id || 
+      (activeUser.phone === '9845012345' && (o.userId === 'user-1' || o.userPhone === '9845012345'))
+    ) {
+      combinedOrdersMap.set(o.id, o);
+    }
+  });
+  apiOrders.forEach(o => {
+    combinedOrdersMap.set(o.id, { ...(combinedOrdersMap.get(o.id) || {}), ...o });
+  });
+
+  const userOrders = Array.from(combinedOrdersMap.values()).sort((a, b) => 
+    new Date(b.orderPlacedAt || b.createdAt || 0) - new Date(a.orderPlacedAt || a.createdAt || 0)
   );
 
   // Status buckets
