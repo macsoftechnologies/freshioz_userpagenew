@@ -17,16 +17,21 @@ export function StoreProvider({ children }) {
     // Initial sync from shared server file
     syncFreshiozStoreFromServer();
 
-    // Sync immediately when user switches focus to this browser window
+    // Sync on window focus (throttled to at most once every 10s)
+    let lastFocusSync = 0;
     const handleFocus = () => {
-      syncFreshiozStoreFromServer();
+      const now = Date.now();
+      if (now - lastFocusSync > 10000) {
+        lastFocusSync = now;
+        syncFreshiozStoreFromServer();
+      }
     };
     window.addEventListener('focus', handleFocus);
 
-    // Live polling (5s) for real-time mirroring across multiple tabs and devices
+    // Live polling (25s) for real-time mirroring across multiple tabs and devices without flickering
     const interval = setInterval(() => {
       syncFreshiozStoreFromServer();
-    }, 5000);
+    }, 25000);
 
     return () => {
       window.removeEventListener('freshioz_store_updated', handleSync);
