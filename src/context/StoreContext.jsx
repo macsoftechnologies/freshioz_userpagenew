@@ -422,7 +422,7 @@ export function StoreProvider({ children }) {
     saveFreshiozStore(prev => ({
       ...prev,
       orders: [confirmedOrder, ...(prev.orders || []).filter(o => o.id !== confirmedOrder.id)]
-    }));
+    }), { skipPush: true });
 
     clearCart();
     return confirmedOrder;

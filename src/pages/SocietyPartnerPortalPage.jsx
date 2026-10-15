@@ -163,7 +163,7 @@ export default function SocietyPartnerPortalPage() {
           societies: updatedSocieties,
           withdrawals: [newWithdrawal, ...(prev.withdrawals || [])]
         };
-      });
+      }, { skipPush: true });
 
       setIsWithdrawModalOpen(false);
       setWithdrawAmount('');

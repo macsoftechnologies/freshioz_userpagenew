@@ -64,7 +64,7 @@ export default function UserProfilePage() {
               ...prev,
               orders: [...res, ...otherOrders]
             };
-          });
+          }, { skipPush: true });
         }
       } catch (err) {
         console.warn('Live orders fetch note:', err?.message || err);
@@ -110,7 +110,7 @@ export default function UserProfilePage() {
           cancelledBy: activeUser?.name || 'Resident',
           cancelledById: activeUser?.id || activeUser?.phone
         } : o)
-      }));
+      }), { skipPush: true });
 
       setCancelSuccessMsg(`Order #${cancellingOrder.id} successfully cancelled. 100% refund of ₹${cancellingOrder.totalAmount} will be returned to ${cancellingOrder.paymentMethod || 'UPI'}.`);
       setCancellingOrder(null);

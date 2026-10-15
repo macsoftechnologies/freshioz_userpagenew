@@ -178,13 +178,17 @@ export async function syncFreshiozStoreFromServer() {
   return null;
 }
 
-export function saveFreshiozStore(updater) {
+export function saveFreshiozStore(updater, options = {}) {
   const current = getFreshiozStore();
   const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 
   window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: next }));
   
+  if (options.skipPush) {
+    return next;
+  }
+
   pushStoreToServer(next).then(res => {
     if (res && !res.success) {
       console.warn('Server write failed. Rolling back local store to prevent phantom data.');
