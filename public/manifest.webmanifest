@@ -1,5 +1,5 @@
 {
-  "name": "Freshioz — Farm Direct Fresh Produce",
+  "name": "Freshioz",
   "short_name": "Freshioz",
   "description": "Daily farm-fresh vegetables, fruits and essentials delivered next-morning direct to your apartment doorstep.",
   "start_url": "/",
@@ -25,7 +25,7 @@
       "purpose": "any"
     },
     {
-      "src": "/freshioz-logo-square.png",
+      "src": "/pwa-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

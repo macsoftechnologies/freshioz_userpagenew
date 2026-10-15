@@ -22,6 +22,7 @@ import ProductDetailsPage from './pages/ProductDetailsPage';
 import ScrollToTop from './components/common/ScrollToTop';
 import BotanicalWatermarkBackdrop from './components/common/BotanicalWatermarkBackdrop';
 import PwaInstallBanner from './components/common/PwaInstallBanner';
+import AppSplashScreen from './components/common/AppSplashScreen';
 
 export default function App() {
   const navigate = useNavigate();
@@ -127,6 +128,9 @@ export default function App() {
 
       {/* PWA Home Screen Install Banner */}
       <PwaInstallBanner />
+
+      {/* Opening Splash Screen */}
+      <AppSplashScreen />
     </div>
   );
 }
