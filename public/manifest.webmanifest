@@ -1,8 +1,9 @@
 {
+  "id": "https://freshioz.com/",
   "name": "Freshioz",
   "short_name": "Freshioz",
   "description": "Daily farm-fresh vegetables, fruits and essentials delivered next-morning direct to your apartment doorstep.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -33,17 +34,17 @@
   ],
   "shortcuts": [
     {
-      "name": "Order Fresh Produce",
-      "short_name": "Shop",
-      "description": "Browse daily fresh mandi vegetables & fruits",
+      "name": "Mandi Catalog",
+      "short_name": "Catalog",
+      "description": "Browse daily farm fresh produce",
       "url": "/catalog",
       "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Track Delivery",
-      "short_name": "Tracking",
-      "description": "Live apartment delivery status",
-      "url": "/tracking",
+      "name": "Track Order",
+      "short_name": "Orders",
+      "description": "Live status of your apartment morning delivery",
+      "url": "/order-tracking",
       "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }]
     }
   ]
