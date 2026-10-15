@@ -80,7 +80,6 @@ export default function CheckoutPage() {
 
   // User confirmed in popup: commits order to store
   const handleExecuteConfirmedOrder = async () => {
-    setIsConfirmOrderModalOpen(false);
     setIsPlacing(true);
 
     try {
@@ -88,6 +87,7 @@ export default function CheckoutPage() {
         deliverySlot,
         paymentMethod
       });
+      setIsConfirmOrderModalOpen(false);
       setIsPlacing(false);
       if (order) {
         navigate(`/tracking/${order.id}`);
