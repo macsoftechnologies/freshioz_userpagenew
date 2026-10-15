@@ -62,7 +62,7 @@ export default function AppFooter() {
           <div className="footer-brand-micro">
             {/* High-Contrast Crisp White Badge Card for Logo */}
             <div className="footer-logo-badge-card">
-              <FreshiozLogo height={26} showTagline={false} />
+              <FreshiozLogo height={44} showTagline={true} />
             </div>
             <span className="footer-tagline-text">
               Hyper-local farm-to-community network for Apartments, Gated Communities & Hostels

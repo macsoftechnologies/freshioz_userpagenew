@@ -57,7 +57,7 @@ export default function MobileDrawer() {
       <div className="drawer-sidebar" onClick={(e) => e.stopPropagation()}>
         {/* Drawer Header */}
         <div className="drawer-header">
-          <FreshiozLogo height={38} showTagline={false} />
+          <FreshiozLogo height={48} showTagline={false} />
           <button 
             type="button" 
             onClick={() => setIsMobileDrawerOpen(false)}

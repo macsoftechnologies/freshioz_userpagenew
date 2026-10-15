@@ -33,7 +33,7 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
           >
             <Menu size={22} />
           </button>
-          <FreshiozLogo height={42} showTagline={false} />
+          <FreshiozLogo height={48} showTagline={false} />
         </div>
 
         <div className="mobile-right-cluster">

@@ -301,7 +301,7 @@ export default function AuthModal() {
 
         {/* Brand Header */}
         <div className="auth-header-block" style={{ marginBottom: '14px' }}>
-          <FreshiozLogo height={48} showTagline={false} />
+          <FreshiozLogo height={60} showTagline={true} />
           <h3 className="auth-modal-title" style={{ marginTop: '8px' }}>
             {authMode === 'LOGIN' ? 'Resident Member Sign In' : 'Create Resident Account'}
           </h3>

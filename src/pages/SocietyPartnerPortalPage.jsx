@@ -325,7 +325,7 @@ export default function SocietyPartnerPortalPage() {
           boxShadow: '0 8px 24px rgba(21, 34, 27, 0.08)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <FreshiozLogo height={42} showTagline={false} />
+            <FreshiozLogo height={56} showTagline={true} />
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',

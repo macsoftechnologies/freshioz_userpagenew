@@ -103,7 +103,7 @@ export default function SocietyRequestModal() {
         {!submitted ? (
           <div>
             <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-              <FreshiozLogo height={48} showTagline={false} />
+              <FreshiozLogo height={56} showTagline={true} />
               <h3 style={{ fontSize: '19px', fontWeight: 800, color: '#173328', marginTop: '8px' }}>
                 Request Your Apartment or Hostel
               </h3>
