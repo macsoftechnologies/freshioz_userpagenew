@@ -1,5 +1,5 @@
 // Freshioz Progressive Web App Service Worker
-const CACHE_NAME = 'freshioz-pwa-v1';
+const CACHE_NAME = 'freshioz-pwa-v2';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -40,26 +40,37 @@ self.addEventListener('activate', (event) => {
 // Fetch: Strategy for offline capability & fast loading
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+
+  // 1. Strictly bypass non-GET requests (POST, PUT, DELETE, PATCH, etc.)
+  // Never intercept data synchronization or API submissions
+  if (req.method !== 'GET') return;
+
   const url = new URL(req.url);
 
-  // 1. Skip non-HTTP(S) and backend API requests
+  // 2. Bypass non-HTTP(S) and backend API / upload requests
   if (!url.protocol.startsWith('http')) return;
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) {
-    // API and uploads always go to network directly
+  if (
+    url.hostname.includes('api.') ||
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/uploads')
+  ) {
     return;
   }
 
-  // 2. Navigation requests: Network first, fall back to cached shell
+  // 3. Navigation requests: Network first, fall back to cached shell
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => {
-        return caches.match('/') || caches.match('/index.html');
+      fetch(req).catch(async () => {
+        const cached = (await caches.match(req)) || 
+                       (await caches.match('/index.html')) || 
+                       (await caches.match('/'));
+        return cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
       })
     );
     return;
   }
 
-  // 3. Static assets (images, scripts, styles): Cache-first / Stale-while-revalidate
+  // 4. Static assets (images, scripts, styles): Stale-while-revalidate
   if (
     url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|webp|woff2?|ico)$/i) ||
     url.origin === 'https://fonts.googleapis.com' ||
@@ -67,13 +78,15 @@ self.addEventListener('fetch', (event) => {
   ) {
     event.respondWith(
       caches.match(req).then((cached) => {
-        const fetchPromise = fetch(req).then((networkRes) => {
-          if (networkRes && networkRes.status === 200) {
-            const clone = networkRes.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          }
-          return networkRes;
-        }).catch(() => cached);
+        const fetchPromise = fetch(req)
+          .then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+              const clone = networkRes.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            return networkRes;
+          })
+          .catch(() => cached || new Response('', { status: 404 }));
 
         return cached || fetchPromise;
       })
@@ -81,9 +94,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Default: Network with cache fallback
+  // 5. Default GET requests
   event.respondWith(
-    fetch(req).catch(() => caches.match(req))
+    fetch(req).catch(async () => {
+      const cached = await caches.match(req);
+      return cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+    })
   );
 });
 
