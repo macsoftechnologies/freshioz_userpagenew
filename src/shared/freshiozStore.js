@@ -93,37 +93,15 @@ export function getFreshiozStore() {
 
 import { API_BASE_URL } from '../api/client';
 
-// In user-web, all database mutations occur strictly via dedicated REST APIs:
-// - Orders -> POST /api/orders
-// - Inbound Requests -> POST /api/inbound-requests
-// - Payouts -> POST /api/societies/:id/payout-request
-export async function pushStoreToServer(storeData) {
-  try {
-    const token = localStorage.getItem('freshioz_user_token') || 
-                  localStorage.getItem('freshioz_partner_token') || 
-                  localStorage.getItem('freshioz_auth_token');
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const res = await fetch(`${API_BASE_URL}/freshioz-store`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(storeData)
-    });
-
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      const errMsg = errJson.message || `Server store write failed (${res.status})`;
-      console.warn('Backend store write note:', errMsg);
-      return { success: false, error: errMsg };
-    }
-
-    const resData = await res.json().catch(() => ({}));
-    return { success: true, data: resData };
-  } catch (e) {
-    console.warn('Network error pushing store to server:', e);
-    return { success: false, error: e?.message || 'Network error' };
-  }
+// In user-web (customer & resident portal), all database mutations occur strictly via dedicated REST APIs:
+// - Orders -> POST /api/orders (via orderService)
+// - Order Cancellations -> POST /api/orders/:id/cancel (via orderService)
+// - Inbound Community Requests -> POST /api/inbound-requests
+// - Society Payouts -> POST /api/societies/:id/payout-request
+// Bulk store writes to /freshioz-store are strictly restricted to internal staff roles and never called by shopper web.
+export async function pushStoreToServer(_storeData) {
+  // No-op for customer storefront: database mutations use dedicated REST APIs above.
+  return { success: true, clientOnly: true };
 }
 
 export function areEntityCollectionsEqual(localData, serverData) {
@@ -178,38 +156,21 @@ export async function syncFreshiozStoreFromServer() {
   return null;
 }
 
-export function saveFreshiozStore(updater, options = {}) {
+export function saveFreshiozStore(updater, _options = {}) {
   const current = getFreshiozStore();
   const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 
   window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: next }));
-  
-  if (options.skipPush) {
-    return next;
-  }
-
-  pushStoreToServer(next).then(res => {
-    if (res && !res.success) {
-      console.warn('Server write failed. Rolling back local store to prevent phantom data.');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-      window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: current }));
-    }
-  });
   return next;
 }
 
 export async function saveFreshiozStoreAsync(updater) {
   const current = getFreshiozStore();
   const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
-  
-  const result = await pushStoreToServer(next);
-  if (result.success) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: next }));
-  }
-  
-  return { ...result, store: result.success ? next : current };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: next }));
+  return { success: true, store: next };
 }
 
 export function resetFreshiozStoreToClean() {
