@@ -121,6 +121,15 @@ export function areEntityCollectionsEqual(localData, serverData) {
 
 export async function syncFreshiozStoreFromServer() {
   try {
+    // If the user is currently typing in an input, textarea, or contentEditable element,
+    // skip dispatching store re-renders to prevent cursor jumps or flickering forms.
+    if (typeof document !== 'undefined') {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+        return null;
+      }
+    }
+
     const token = localStorage.getItem('freshioz_user_token') || 
                   localStorage.getItem('freshioz_partner_token') || 
                   localStorage.getItem('freshioz_auth_token');
