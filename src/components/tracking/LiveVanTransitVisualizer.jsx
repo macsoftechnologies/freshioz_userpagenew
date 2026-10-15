@@ -339,22 +339,24 @@ export default function LiveVanTransitVisualizer({
         </div>
       </div>
 
-      {/* Quick Stage Simulator Buttons (For demo & testing van movement) */}
-      <div className="van-stage-simulator-strip">
-        <div className="sim-label">⚡ Test Van Stage Motion:</div>
-        <div className="sim-buttons-wrap">
-          {milestones.map((ms, idx) => (
-            <button
-              key={ms.id}
-              type="button"
-              className={`sim-step-btn ${currentOrder?.status === ms.id ? 'active' : ''}`}
-              onClick={() => onAdvanceStatus && onAdvanceStatus(ms.id)}
-            >
-              {idx + 1}. {ms.label}
-            </button>
-          ))}
+      {/* Quick Stage Simulator Buttons (For internal testing only when explicit handler passed) */}
+      {Boolean(onAdvanceStatus) && (
+        <div className="van-stage-simulator-strip">
+          <div className="sim-label">⚡ Test Van Stage Motion:</div>
+          <div className="sim-buttons-wrap">
+            {milestones.map((ms, idx) => (
+              <button
+                key={ms.id}
+                type="button"
+                className={`sim-step-btn ${currentOrder?.status === ms.id ? 'active' : ''}`}
+                onClick={() => onAdvanceStatus && onAdvanceStatus(ms.id)}
+              >
+                {idx + 1}. {ms.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

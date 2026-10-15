@@ -21,4 +21,11 @@ export const orderService = {
       body: JSON.stringify(orderData),
     });
   },
+  async cancel(id, reason) {
+    const body = typeof reason === 'object' ? reason : { reason };
+    return apiClient(`/orders/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
 };

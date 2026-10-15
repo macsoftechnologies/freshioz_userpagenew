@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   User, 
-  Building2, 
-  Phone, 
-  Mail, 
   Clock, 
   LogOut, 
   CheckCircle2, 
   ChevronRight,
-  ShoppingBag,
-  Sparkles,
   Package,
   Truck,
   RotateCcw,
   XCircle,
-  ShieldCheck,
-  MapPin,
   ArrowRight,
-  Receipt,
   AlertCircle,
   X
 } from 'lucide-react';
@@ -27,13 +19,11 @@ import { saveFreshiozStore } from '../shared/freshiozStore';
 import { orderService } from '../services/orderService';
 
 export default function UserProfilePage() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'orders'; // 'orders' | 'history' | 'profile'
 
   const { 
     activeUser, 
-    logoutUser, 
     requestLogout,
     store, 
     setIsAuthModalOpen,
@@ -47,8 +37,46 @@ export default function UserProfilePage() {
   const [cancellingOrder, setCancellingOrder] = useState(null);
   const [cancelReason, setCancelReason] = useState('Placed order by mistake');
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  const handleConfirmCancel = (e) => {
+  // Live order fetching from backend REST API (called unconditionally before early return)
+  const [apiOrders, setApiOrders] = useState([]);
+  const [_isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveOrders() {
+      if (!activeUser?.phone) return;
+      setIsLoadingOrders(true);
+      try {
+        const res = await orderService.getAll({ phone: activeUser.phone });
+        if (isMounted && Array.isArray(res)) {
+          setApiOrders(res);
+          // Sync into local store so offline cache and tabs have full orders
+          saveFreshiozStore(prev => {
+            const existing = prev.orders || [];
+            const otherOrders = existing.filter(o => 
+              o.userPhone !== activeUser.phone && 
+              o.userId !== activeUser.phone && 
+              o.userId !== activeUser.id
+            );
+            return {
+              ...prev,
+              orders: [...res, ...otherOrders]
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('Live orders fetch note:', err?.message || err);
+      } finally {
+        if (isMounted) setIsLoadingOrders(false);
+      }
+    }
+    fetchLiveOrders();
+    return () => { isMounted = false; };
+  }, [activeUser?.phone, activeUser?.id]);
+
+  const handleConfirmCancel = async (e) => {
     e.preventDefault();
     if (!cancellingOrder) return;
     if (cancellingOrder.status !== 'CONFIRMED') {
@@ -57,21 +85,41 @@ export default function UserProfilePage() {
       return;
     }
 
-    saveFreshiozStore(prev => ({
-      ...prev,
-      orders: prev.orders.map(o => o.id === cancellingOrder.id ? {
+    try {
+      setIsCancelling(true);
+      await orderService.cancel(cancellingOrder.id, {
+        reason: cancelReason || 'Cancelled by resident before cutoff',
+      });
+
+      // Update in-memory API orders
+      setApiOrders(prev => prev.map(o => o.id === cancellingOrder.id ? {
         ...o,
         status: 'CANCELLED',
         cancelledReason: cancelReason || 'Cancelled by resident before cutoff',
-        cancelledAt: new Date().toISOString(),
-        cancelledBy: activeUser?.name || 'Resident',
-        cancelledById: activeUser?.id || activeUser?.phone
-      } : o)
-    }));
+        cancelledAt: new Date().toISOString()
+      } : o));
 
-    setCancelSuccessMsg(`Order #${cancellingOrder.id} successfully cancelled. 100% refund of ₹${cancellingOrder.totalAmount} will be returned to ${cancellingOrder.paymentMethod || 'UPI'}.`);
-    setCancellingOrder(null);
-    setTimeout(() => setCancelSuccessMsg(''), 7000);
+      // Sync into local store
+      saveFreshiozStore(prev => ({
+        ...prev,
+        orders: (prev.orders || []).map(o => o.id === cancellingOrder.id ? {
+          ...o,
+          status: 'CANCELLED',
+          cancelledReason: cancelReason || 'Cancelled by resident before cutoff',
+          cancelledAt: new Date().toISOString(),
+          cancelledBy: activeUser?.name || 'Resident',
+          cancelledById: activeUser?.id || activeUser?.phone
+        } : o)
+      }));
+
+      setCancelSuccessMsg(`Order #${cancellingOrder.id} successfully cancelled. 100% refund of ₹${cancellingOrder.totalAmount} will be returned to ${cancellingOrder.paymentMethod || 'UPI'}.`);
+      setCancellingOrder(null);
+      setTimeout(() => setCancelSuccessMsg(''), 7000);
+    } catch (err) {
+      alert(err?.message || 'Failed to cancel order on the server. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   if (!activeUser) {
@@ -115,43 +163,6 @@ export default function UserProfilePage() {
     );
   }
 
-  // Live order fetching from backend REST API
-  const [apiOrders, setApiOrders] = useState([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchLiveOrders() {
-      if (!activeUser?.phone) return;
-      setIsLoadingOrders(true);
-      try {
-        const res = await orderService.getAll({ phone: activeUser.phone });
-        if (isMounted && Array.isArray(res)) {
-          setApiOrders(res);
-          // Sync into local store so offline cache and tabs have full orders
-          saveFreshiozStore(prev => {
-            const existing = prev.orders || [];
-            const otherOrders = existing.filter(o => 
-              o.userPhone !== activeUser.phone && 
-              o.userId !== activeUser.phone && 
-              o.userId !== activeUser.id
-            );
-            return {
-              ...prev,
-              orders: [...res, ...otherOrders]
-            };
-          });
-        }
-      } catch (err) {
-        console.warn('Live orders fetch note:', err?.message || err);
-      } finally {
-        if (isMounted) setIsLoadingOrders(false);
-      }
-    }
-    fetchLiveOrders();
-    return () => { isMounted = false; };
-  }, [activeUser?.phone, activeUser?.id]);
-
   // Combine live API orders and local store orders (deduplicated by id)
   const combinedOrdersMap = new Map();
   (store.orders || []).forEach(o => {
@@ -189,7 +200,7 @@ export default function UserProfilePage() {
     : userOrders;
 
   const totalSpent = userOrders.filter(o => o.status !== 'CANCELLED').reduce((acc, o) => acc + o.totalAmount, 0);
-  const totalCashbackGenerated = userOrders.filter(o => o.status !== 'CANCELLED').reduce((acc, o) => acc + (o.societyCommissionEarned || 0), 0);
+  const _totalCashbackGenerated = userOrders.filter(o => o.status !== 'CANCELLED').reduce((acc, o) => acc + (o.societyCommissionEarned || 0), 0);
 
   // Quick reorder helper
   const handleReorder = (order) => {
@@ -998,7 +1009,7 @@ export default function UserProfilePage() {
                   {historyDisplayedOrders.map(order => {
                     const isDelivered = order.status === 'DELIVERED';
                     const isPending = ['CONFIRMED', 'PROCURING', 'AT_WAREHOUSE', 'PACKED', 'OUT_FOR_DELIVERY'].includes(order.status);
-                    const isCancelled = order.status === 'CANCELLED';
+                    const _isCancelled = order.status === 'CANCELLED';
 
                     const statusBg = isDelivered ? '#ECFDF5' : isPending ? '#EFF6FF' : '#FEF2F2';
                     const statusColor = isDelivered ? '#059669' : isPending ? '#2563EB' : '#DC2626';
@@ -1333,9 +1344,21 @@ export default function UserProfilePage() {
                 </button>
                 <button
                   type="submit"
-                  style={{ flex: 2, padding: '11px', background: '#DC2626', color: '#FFF', border: 'none', borderRadius: '9999px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)' }}
+                  disabled={isCancelling}
+                  style={{ 
+                    flex: 2, 
+                    padding: '11px', 
+                    background: isCancelling ? '#94A3B8' : '#DC2626', 
+                    color: '#FFF', 
+                    border: 'none', 
+                    borderRadius: '9999px', 
+                    fontWeight: 800, 
+                    fontSize: '13px', 
+                    cursor: isCancelling ? 'not-allowed' : 'pointer', 
+                    boxShadow: isCancelling ? 'none' : '0 4px 12px rgba(220, 38, 38, 0.25)' 
+                  }}
                 >
-                  Confirm Cancellation & Refund
+                  {isCancelling ? 'Cancelling on Server...' : 'Confirm Cancellation & Refund'}
                 </button>
               </div>
             </form>

@@ -97,9 +97,33 @@ import { API_BASE_URL } from '../api/client';
 // - Orders -> POST /api/orders
 // - Inbound Requests -> POST /api/inbound-requests
 // - Payouts -> POST /api/societies/:id/payout-request
-// Operational bulk store writes are strictly restricted to authenticated staff in admin-portal.
-export async function pushStoreToServer(_storeData) {
-  return { success: true };
+export async function pushStoreToServer(storeData) {
+  try {
+    const token = localStorage.getItem('freshioz_user_token') || 
+                  localStorage.getItem('freshioz_partner_token') || 
+                  localStorage.getItem('freshioz_auth_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE_URL}/freshioz-store`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(storeData)
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      const errMsg = errJson.message || `Server store write failed (${res.status})`;
+      console.warn('Backend store write note:', errMsg);
+      return { success: false, error: errMsg };
+    }
+
+    const resData = await res.json().catch(() => ({}));
+    return { success: true, data: resData };
+  } catch (e) {
+    console.warn('Network error pushing store to server:', e);
+    return { success: false, error: e?.message || 'Network error' };
+  }
 }
 
 export function areEntityCollectionsEqual(localData, serverData) {

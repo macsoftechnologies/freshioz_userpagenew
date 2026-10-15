@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   CheckCircle2, 
@@ -6,20 +6,18 @@ import {
   Leaf, 
   PackageCheck, 
   Truck, 
-  Home, 
-  Building2, 
-  ArrowLeft,
-  Sparkles,
-  Download,
-  AlertCircle
+  ArrowLeft
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { saveFreshiozStore } from '../shared/freshiozStore';
+import { orderService } from '../services/orderService';
 import LiveVanTransitVisualizer from '../components/tracking/LiveVanTransitVisualizer';
 
 export default function OrderTrackingPage() {
   const { orderId } = useParams();
   const { store, activeUser } = useStore();
+
+  const [liveServerOrder, setLiveServerOrder] = useState(null);
+  const [_isLoadingLive, setIsLoadingLive] = useState(false);
 
   // Secure order lookup: strictly match requested orderId or current user's latest order
   const userOrders = (store?.orders || []).filter(o => {
@@ -27,9 +25,35 @@ export default function OrderTrackingPage() {
     return o.userPhone === activeUser.phone || o.userId === activeUser.id;
   });
 
-  const currentOrder = (store?.orders || []).find(o => o.id === orderId || o.uuid === orderId) 
+  const currentLocalOrder = (store?.orders || []).find(o => o.id === orderId || o.uuid === orderId) 
     || userOrders[0] 
     || null;
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveTracking() {
+      const targetId = orderId || currentLocalOrder?.id || currentLocalOrder?.uuid;
+      if (!targetId) return;
+      setIsLoadingLive(true);
+      try {
+        const trackData = await orderService.track(targetId);
+        if (isMounted && trackData && trackData.id) {
+          setLiveServerOrder(trackData);
+        }
+      } catch (err) {
+        console.warn('Order tracking live fetch note:', err?.message || err);
+      } finally {
+        if (isMounted) setIsLoadingLive(false);
+      }
+    }
+    fetchLiveTracking();
+    return () => { isMounted = false; };
+  }, [orderId, currentLocalOrder?.id, currentLocalOrder?.uuid]);
+
+  // Combine local cached order details (e.g. line items) with live backend tracking milestones
+  const currentOrder = liveServerOrder 
+    ? { ...(currentLocalOrder || {}), ...liveServerOrder } 
+    : currentLocalOrder;
 
   if (!currentOrder) {
     return (
@@ -69,23 +93,6 @@ export default function OrderTrackingPage() {
   };
 
   const currentStepIdx = getStepIndex(currentOrder?.status || 'CONFIRMED');
-
-  const advanceOrderStatus = () => {
-    if (!currentOrder || currentOrder.status === 'DELIVERED') return;
-    const statusCycle = ['CONFIRMED', 'PROCURING', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-    const currentIdx = statusCycle.indexOf(currentOrder.status);
-    const nextIdx = currentIdx >= 0 ? Math.min(currentIdx + 1, statusCycle.length - 1) : 1;
-    const nextStatus = statusCycle[nextIdx];
-
-    saveFreshiozStore(prev => ({
-      ...prev,
-      orders: (prev.orders || []).map(o => o.id === currentOrder.id ? {
-        ...o,
-        status: nextStatus,
-        ...(nextStatus === 'DELIVERED' ? { deliveredAt: new Date().toISOString() } : {})
-      } : o)
-    }));
-  };
 
   return (
     <div className="section-container" style={{ paddingTop: '20px', maxWidth: '840px' }}>
@@ -171,7 +178,6 @@ export default function OrderTrackingPage() {
       <LiveVanTransitVisualizer 
         currentOrder={currentOrder} 
         currentStepIdx={currentStepIdx} 
-        onAdvanceStatus={advanceOrderStatus} 
       />
 
       {/* 5-Step Visual Tracker Pipeline */}
