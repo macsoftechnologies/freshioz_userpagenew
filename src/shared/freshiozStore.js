@@ -102,6 +102,21 @@ export async function pushStoreToServer(_storeData) {
   return { success: true };
 }
 
+export function areEntityCollectionsEqual(localData, serverData) {
+  if (!localData || !serverData) return false;
+  const collections = [
+    'categories', 'units', 'products', 'warehouses', 'societies',
+    'orders', 'vendors', 'procurementLogs', 'warehouseInventory',
+    'societyRequests', 'withdrawals'
+  ];
+  for (const key of collections) {
+    if (JSON.stringify(localData[key] || []) !== JSON.stringify(serverData[key] || [])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function syncFreshiozStoreFromServer() {
   try {
     const token = localStorage.getItem('freshioz_user_token') || 
@@ -128,10 +143,8 @@ export async function syncFreshiozStoreFromServer() {
           orders: mergedOrders,
         };
 
-        const localRaw = localStorage.getItem(STORAGE_KEY);
-        const mergedRaw = JSON.stringify(mergedData);
-        if (localRaw !== mergedRaw) {
-          localStorage.setItem(STORAGE_KEY, mergedRaw);
+        if (!areEntityCollectionsEqual(currentLocal, mergedData)) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
           window.dispatchEvent(new CustomEvent('freshioz_store_updated', { detail: mergedData }));
           return mergedData;
         }
