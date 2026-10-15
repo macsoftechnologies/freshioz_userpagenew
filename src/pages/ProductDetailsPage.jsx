@@ -71,12 +71,13 @@ export default function ProductDetailsPage() {
     );
   }
 
-  const isWholesale = selectedMode === 'WHOLESALE';
+  const isWholesaleAvailable = product.hasWholesale !== false && Boolean(product.wholesaleUnit) && Boolean(product.wholesalePrice);
+  const isWholesale = selectedMode === 'WHOLESALE' && isWholesaleAvailable;
   const cartKey = `${product.id}_${isWholesale ? 'ws' : 'rt'}`;
   const cartItem = cart.find(item => item.key === cartKey);
   const qtyInCart = cartItem ? cartItem.qty : 0;
 
-  const currentUnit = isWholesale ? product.wholesaleUnit : product.retailUnit;
+  const currentUnit = isWholesale ? product.wholesaleUnit : (product.retailUnit || product.defaultUnit || '1 kg');
   const currentPrice = isWholesale ? product.wholesalePrice : product.retailPrice;
   const currentMarketPrice = isWholesale 
     ? Math.round(product.wholesalePrice * 1.35) 
@@ -140,7 +141,7 @@ export default function ProductDetailsPage() {
                     <Package size={12} style={{ display: 'inline', marginRight: '4px' }} />
                     {product.wholesaleSavings || 'Bulk Mandi Rate'}
                   </span>
-                ) : (
+                ) : product.badge !== 'NONE' && (
                   <span className="freshness-single-badge" style={{ fontSize: '11px', padding: '4px 10px' }}>
                     <Sparkles size={12} color="#C3E6B4" style={{ display: 'inline', marginRight: '4px' }} />
                     {product.badge || 'Harvested Today at Dawn'}
@@ -202,18 +203,18 @@ export default function ProductDetailsPage() {
             {/* Pack Size & Quantity Mode Selector */}
             <div className="pack-selector-section">
               <div className="pack-selector-label">
-                <span>Select Pack Size / Tier</span>
-                <span className="pack-label-sub">Retail or Wholesale Crate</span>
+                <span>Standard Kitchen Pack</span>
+                <span className="pack-label-sub">Direct Fresh Harvest</span>
               </div>
 
-              <div className="pack-options-grid">
+              <div className="pack-options-grid" style={{ gridTemplateColumns: '1fr' }}>
                 {/* Retail Option Card */}
                 <div 
-                  className={`pack-card ${!isWholesale ? 'pack-active' : ''}`}
-                  onClick={() => setSelectedMode('RETAIL')}
+                  className="pack-card pack-active"
+                  style={{ border: '2px solid #234B3C', background: '#F8FAF9' }}
                 >
                   <div className="pack-radio-circle">
-                    {!isWholesale && <div className="pack-radio-dot" />}
+                    <div className="pack-radio-dot" />
                   </div>
                   <div className="pack-meta">
                     <div className="pack-title">Daily Kitchen Pack</div>
@@ -225,29 +226,87 @@ export default function ProductDetailsPage() {
                   </div>
                 </div>
 
-                {/* Wholesale Crate Option Card */}
-                <div 
-                  className={`pack-card ${isWholesale ? 'pack-active wholesale-active-card' : ''}`}
-                  onClick={() => setSelectedMode('WHOLESALE')}
-                >
-                  <div className="pack-radio-circle">
-                    {isWholesale && <div className="pack-radio-dot" />}
-                  </div>
-                  <div className="pack-meta">
-                    <div className="pack-title">
-                      <span>📦 Bulk Crate / Sack</span>
-                      {product.wholesaleSavings && (
-                        <span className="savings-badge-inline">{product.wholesaleSavings}</span>
-                      )}
+                {/* Wholesale Crate Option Card - Commented out for retail concentration
+                {isWholesaleAvailable && (
+                  <div 
+                    className={`pack-card ${isWholesale ? 'pack-active wholesale-active-card' : ''}`}
+                    onClick={() => setSelectedMode('WHOLESALE')}
+                  >
+                    <div className="pack-meta">
+                      <div className="pack-title">📦 Bulk Crate / Sack</div>
+                      <div className="pack-weight">{product.wholesaleUnit}</div>
                     </div>
-                    <div className="pack-weight">{product.wholesaleUnit}</div>
+                    <div className="pack-pricing">
+                      <span className="pack-current-price">₹{product.wholesalePrice}</span>
+                    </div>
                   </div>
-                  <div className="pack-pricing">
-                    <span className="pack-current-price wholesale-price-color">₹{product.wholesalePrice}</span>
-                    <span className="pack-mrp">₹{Math.round(product.wholesalePrice * 1.35)}</span>
+                )}
+                */}
+              </div>
+
+              {/* Bulk Quantity Discount Tier Card */}
+              {product.bulkMinQty && product.bulkMinQty > 0 && product.bulkDiscountPercent && product.bulkDiscountPercent > 0 && (
+                <div style={{
+                  marginTop: '12px',
+                  background: qtyInCart >= product.bulkMinQty ? '#DCFCE7' : '#F0FDF4',
+                  border: qtyInCart >= product.bulkMinQty ? '1.5px solid #22C55E' : '1.5px dashed #86EFAC',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: '#166534' }}>
+                        🏷️ Volume Bulk Discount
+                      </span>
+                      <span style={{
+                        background: '#15803D',
+                        color: '#FFF',
+                        fontSize: '10.5px',
+                        fontWeight: 800,
+                        padding: '2px 7px',
+                        borderRadius: '9999px'
+                      }}>
+                        {product.bulkDiscountPercent}% OFF
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#166534', marginTop: '3px' }}>
+                      Buy <strong>{product.bulkMinQty}+ {product.retailUnit || 'kg'}</strong> @ <strong>₹{Math.round(product.retailPrice * (1 - (product.bulkDiscountPercent / 100)))}/{product.retailUnit || 'kg'}</strong> (Save ₹{Math.round(product.retailPrice * (product.bulkDiscountPercent / 100))} each)
+                    </div>
+                  </div>
+
+                  <div>
+                    {qtyInCart >= product.bulkMinQty ? (
+                      <span style={{
+                        background: '#166534',
+                        color: '#FFF',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        ✓ {product.bulkDiscountPercent}% Applied
+                      </span>
+                    ) : (
+                      <span style={{
+                        background: '#BBF7D0',
+                        color: '#166534',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {qtyInCart > 0 ? `Add ${product.bulkMinQty - qtyInCart} more` : `Min ${product.bulkMinQty} units`}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Price Row & Action Button */}

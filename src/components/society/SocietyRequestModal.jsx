@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, Building2, MapPin, Send, Sparkles, Phone, User, Mail, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, Building2, MapPin, Send, Sparkles, Phone, User, Mail, AlertCircle, HelpCircle } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import LeafletLocationPicker from '../common/LeafletLocationPicker';
 import FreshiozLogo from '../common/FreshiozLogo';
@@ -13,6 +13,7 @@ export default function SocietyRequestModal() {
 
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     requesterName: '',
     requesterPhone: '',
@@ -62,24 +63,34 @@ export default function SocietyRequestModal() {
       return;
     }
 
-    requestNewSociety({
-      requesterName: formData.requesterName.trim(),
-      requesterPhone: formData.requesterPhone.trim(),
-      requesterEmail: formData.requesterEmail.trim(),
-      societyName: formData.societyName.trim(),
-      societyType: formData.societyType,
-      address: formData.address.trim(),
-      lat: formData.lat,
-      lng: formData.lng,
-      estimatedFlats: Number(formData.estimatedFlats) || 100
-    });
+    setErrorMsg('');
+    setIsConfirmModalOpen(true);
+  };
 
-    setSubmitted(true);
+  const handleFinalCommit = async () => {
+    setIsConfirmModalOpen(false);
+    setErrorMsg('');
+    try {
+      await requestNewSociety({
+        requesterName: formData.requesterName.trim(),
+        requesterPhone: formData.requesterPhone.trim(),
+        requesterEmail: formData.requesterEmail.trim(),
+        societyName: formData.societyName.trim(),
+        societyType: formData.societyType,
+        address: formData.address.trim(),
+        lat: formData.lat,
+        lng: formData.lng,
+        estimatedFlats: Number(formData.estimatedFlats) || 100
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to submit community request. Please check connection and try again.');
+    }
   };
 
   return (
-    <div className="modal-backdrop-overlay" onClick={() => setIsSocietyRequestModalOpen(false)}>
-      <div className="modal-dialog-box" style={{ maxWidth: '580px' }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop-overlay">
+      <div className="modal-dialog-box" style={{ maxWidth: '580px', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           className="modal-close-icon"
@@ -268,6 +279,126 @@ export default function SocietyRequestModal() {
           </div>
         )}
       </div>
+
+      {/* Society Request Confirmation Modal */}
+      {isConfirmModalOpen && (
+        <div 
+          className="modal-backdrop-overlay" 
+          style={{ zIndex: 1200, background: 'rgba(15, 23, 42, 0.78)' }}
+        >
+          <div 
+            className="modal-dialog-box"
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '430px', 
+              padding: '24px 22px', 
+              borderRadius: '16px',
+              border: '2px solid #E2E8F0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              background: '#FFFFFF'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#FEF3C7',
+                color: '#D97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <HelpCircle size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  Confirm Inbound Society Request
+                </h3>
+                <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+                  Please confirm details for the field sales officer:
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#F8FAFC',
+              borderRadius: '10px',
+              border: '1.5px solid #E2E8F0',
+              padding: '12px 14px',
+              marginBottom: '18px',
+              fontSize: '12.5px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Community Name:</span>
+                <span style={{ color: '#0F172A', fontWeight: 800 }}>{formData.societyName}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Property Type:</span>
+                <span style={{ color: '#234B3C', fontWeight: 800 }}>
+                  {formData.societyType === 'HOSTEL' ? 'Student Hostel / PG' : 'Gated Apartment Society'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Contact Person:</span>
+                <span style={{ color: '#0F172A', fontWeight: 800 }}>{formData.requesterName} (+91 {formData.requesterPhone})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Locality Address:</span>
+                <span style={{ color: '#0F172A', fontWeight: 700, textAlign: 'right', maxWidth: '200px' }}>
+                  {formData.address}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsConfirmModalOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalCommit}
+                style={{
+                  flex: 1.2,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#234B3C',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <CheckCircle2 size={16} />
+                <span>Yes, Submit Request</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

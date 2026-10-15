@@ -33,6 +33,7 @@ export default function UserProfilePage() {
   const { 
     activeUser, 
     logoutUser, 
+    requestLogout,
     store, 
     setIsAuthModalOpen,
     addToCart,
@@ -41,6 +42,7 @@ export default function UserProfilePage() {
 
   // Status sub-filter for Orders tab
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'COMPLETED' | 'CANCELLED'
+  const [historyFilter, setHistoryFilter] = useState('ALL'); // 'ALL' | 'DELIVERED' | 'IN_TRANSIT' | 'CANCELLED'
   const [cancellingOrder, setCancellingOrder] = useState(null);
   const [cancelReason, setCancelReason] = useState('Placed order by mistake');
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
@@ -48,6 +50,11 @@ export default function UserProfilePage() {
   const handleConfirmCancel = (e) => {
     e.preventDefault();
     if (!cancellingOrder) return;
+    if (cancellingOrder.status !== 'CONFIRMED') {
+      alert('Order cannot be cancelled once procurement and warehouse crating has commenced.');
+      setCancellingOrder(null);
+      return;
+    }
 
     saveFreshiozStore(prev => ({
       ...prev,
@@ -55,7 +62,9 @@ export default function UserProfilePage() {
         ...o,
         status: 'CANCELLED',
         cancelledReason: cancelReason || 'Cancelled by resident before cutoff',
-        cancelledAt: new Date().toISOString()
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: activeUser?.name || 'Resident',
+        cancelledById: activeUser?.id || activeUser?.phone
       } : o)
     }));
 
@@ -214,10 +223,7 @@ export default function UserProfilePage() {
         {/* Prominent High-Visibility Logout Button */}
         <button
           type="button"
-          onClick={() => {
-            logoutUser();
-            navigate('/');
-          }}
+          onClick={() => requestLogout('USER')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -626,7 +632,7 @@ export default function UserProfilePage() {
                             <div style={{ color: '#15221B', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>•</span>
                               <span>{item.name}</span>
-                              <span style={{ color: '#83968D', fontSize: '12px' }}>({item.unit}) × {item.qty}</span>
+                              <span style={{ color: '#83968D', fontSize: '12px' }}>({item.qty} * {item.unit})</span>
                             </div>
                             <div style={{ fontWeight: 700, color: '#234B3C' }}>
                               ₹{item.price * item.qty}
@@ -776,113 +782,330 @@ export default function UserProfilePage() {
         </div>
       )}
 
-      {/* TAB 2: PURCHASE HISTORY */}
-      {activeTab === 'history' && (
-        <div>
-          {/* Summary Stat Cards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '16px',
-            marginBottom: '24px'
-          }}>
-            <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '18px', border: '1.5px solid #E5ECE7' }}>
-              <div style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Delivered Orders</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#234B3C', marginTop: '4px' }}>{completedOrders.length}</div>
-              <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>100% farm-fresh dawn deliveries</div>
-            </div>
+      {/* TAB 2: PURCHASE HISTORY & TRANSACTION LEDGER */}
+      {activeTab === 'history' && (() => {
+        const historyDisplayedOrders = historyFilter === 'DELIVERED'
+          ? completedOrders
+          : historyFilter === 'IN_TRANSIT'
+          ? pendingOrders
+          : historyFilter === 'CANCELLED'
+          ? cancelledOrders
+          : userOrders;
 
-            <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '18px', border: '1.5px solid #E5ECE7' }}>
-              <div style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Total Spent</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#234B3C', marginTop: '4px' }}>₹{totalSpent}</div>
-              <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>Zero middleman mandi pricing</div>
-            </div>
+        const totalItemsOrdered = userOrders.filter(o => o.status !== 'CANCELLED').reduce((acc, o) => 
+          acc + (o.items?.reduce((sum, i) => sum + i.qty, 0) || 0), 0);
 
-            <div style={{ background: '#F0F7F3', borderRadius: '16px', padding: '18px', border: '1.5px solid #CDE2D6' }}>
-              <div style={{ fontSize: '12px', color: '#234B3C', fontWeight: 700, textTransform: 'uppercase' }}>Produce Items Delivered</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: '#234B3C', marginTop: '4px' }}>
-                {completedOrders.reduce((acc, o) => acc + (o.items?.reduce((sum, i) => sum + i.qty, 0) || 0), 0)} items
+        return (
+          <div>
+            {/* Summary Stat Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '14px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '18px', border: '1.5px solid #E5ECE7' }}>
+                <div style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>All Transactions</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#234B3C', marginTop: '4px' }}>{userOrders.length}</div>
+                <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>Total orders recorded</div>
               </div>
-              <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>Fresh vegetables & fruits</div>
-            </div>
-          </div>
 
-          {/* Historical Order Items Breakdown */}
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '20px',
-            border: '1.5px solid #E5ECE7',
-            padding: '24px',
-            marginBottom: '32px'
-          }}>
-            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', marginBottom: '16px' }}>
-              Delivered Produce & Past Receipts
-            </h3>
-
-            {completedOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '36px 20px', color: '#83968D' }}>
-                <Clock size={32} color="#CBD8D0" style={{ margin: '0 auto 10px' }} />
-                <div>No completed deliveries yet. Your orders will appear here once delivered tomorrow morning!</div>
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '18px', border: '1.5px solid #E5ECE7' }}>
+                <div style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Total Spent</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#234B3C', marginTop: '4px' }}>₹{totalSpent}</div>
+                <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>Zero middleman mandi rates</div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {completedOrders.map(order => (
-                  <div
-                    key={order.id}
-                    style={{
-                      background: '#FAFBFB',
-                      borderRadius: '14px',
-                      border: '1px solid #E5ECE7',
-                      padding: '16px 20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '15px', color: '#234B3C' }}>{order.id}</span>
-                        <span style={{ fontSize: '12px', color: '#52635A' }}>• Delivered {order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString() : order.deliveryDate}</span>
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#52635A', marginTop: '4px' }}>
-                        {order.items.map(i => `${i.name} (${i.qty})`).join(', ')}
-                      </div>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 800, color: '#15221B' }}>
-                        ₹{order.totalAmount}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleReorder(order)}
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '18px', border: '1.5px solid #E5ECE7' }}>
+                <div style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Delivered Batches</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#059669', marginTop: '4px' }}>{completedOrders.length}</div>
+                <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>100% early dawn gate drops</div>
+              </div>
+
+              <div style={{ background: '#F0F7F3', borderRadius: '16px', padding: '18px', border: '1.5px solid #CDE2D6' }}>
+                <div style={{ fontSize: '12px', color: '#234B3C', fontWeight: 700, textTransform: 'uppercase' }}>Produce Units</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#234B3C', marginTop: '4px' }}>{totalItemsOrdered}</div>
+                <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px' }}>Fresh vegetables & fruits</div>
+              </div>
+            </div>
+
+            {/* Sub-Filter Pills */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              overflowX: 'auto',
+              paddingBottom: '8px',
+              marginBottom: '16px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setHistoryFilter('ALL')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: historyFilter === 'ALL' ? '1.5px solid #234B3C' : '1px solid #DCE5E0',
+                  background: historyFilter === 'ALL' ? '#234B3C' : '#FFFFFF',
+                  color: historyFilter === 'ALL' ? '#FFFFFF' : '#52635A',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                All Transactions ({userOrders.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHistoryFilter('DELIVERED')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: historyFilter === 'DELIVERED' ? '1.5px solid #059669' : '1px solid #DCE5E0',
+                  background: historyFilter === 'DELIVERED' ? '#059669' : '#FFFFFF',
+                  color: historyFilter === 'DELIVERED' ? '#FFFFFF' : '#52635A',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Delivered ({completedOrders.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHistoryFilter('IN_TRANSIT')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: historyFilter === 'IN_TRANSIT' ? '1.5px solid #2563EB' : '1px solid #DCE5E0',
+                  background: historyFilter === 'IN_TRANSIT' ? '#2563EB' : '#FFFFFF',
+                  color: historyFilter === 'IN_TRANSIT' ? '#FFFFFF' : '#52635A',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                In-Transit / Pending ({pendingOrders.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHistoryFilter('CANCELLED')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: historyFilter === 'CANCELLED' ? '1.5px solid #DC2626' : '1px solid #DCE5E0',
+                  background: historyFilter === 'CANCELLED' ? '#DC2626' : '#FFFFFF',
+                  color: historyFilter === 'CANCELLED' ? '#FFFFFF' : '#52635A',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Cancelled ({cancelledOrders.length})
+              </button>
+            </div>
+
+            {/* Historical Order Items Breakdown */}
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: '20px',
+              border: '1.5px solid #E5ECE7',
+              padding: '24px',
+              marginBottom: '32px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', marginBottom: '2px' }}>
+                    Purchase History & Invoices
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#52635A', margin: 0 }}>
+                    Every transaction is permanently logged with receipt and breakdown.
+                  </p>
+                </div>
+                <div style={{ fontSize: '12px', background: '#F1F5F3', padding: '4px 10px', borderRadius: '8px', color: '#234B3C', fontWeight: 700 }}>
+                  Showing {historyDisplayedOrders.length} records
+                </div>
+              </div>
+
+              {historyDisplayedOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#83968D' }}>
+                  <Clock size={32} color="#CBD8D0" style={{ margin: '0 auto 10px' }} />
+                  <div style={{ fontWeight: 700, color: '#15221B', marginBottom: '4px' }}>
+                    No transactions match filter ({historyFilter.toLowerCase().replace(/_/g, ' ')})
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#52635A', maxWidth: '360px', margin: '0 auto' }}>
+                    Your placed orders appear here in real-time immediately after confirmation.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {historyDisplayedOrders.map(order => {
+                    const isDelivered = order.status === 'DELIVERED';
+                    const isPending = ['CONFIRMED', 'PROCURING', 'AT_WAREHOUSE', 'PACKED', 'OUT_FOR_DELIVERY'].includes(order.status);
+                    const isCancelled = order.status === 'CANCELLED';
+
+                    const statusBg = isDelivered ? '#ECFDF5' : isPending ? '#EFF6FF' : '#FEF2F2';
+                    const statusColor = isDelivered ? '#059669' : isPending ? '#2563EB' : '#DC2626';
+                    const statusBorder = isDelivered ? '#A7F3D0' : isPending ? '#BFDBFE' : '#FECACA';
+
+                    return (
+                      <div
+                        key={`history-${order.id}`}
                         style={{
-                          background: '#234B3C',
-                          color: '#FFF',
-                          border: 'none',
-                          padding: '7px 14px',
-                          borderRadius: '9999px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
+                          background: '#FAFBFB',
+                          borderRadius: '16px',
+                          border: '1.5px solid #E5ECE7',
+                          padding: '18px 20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
                         }}
                       >
-                        <RotateCcw size={12} />
-                        <span>Reorder</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                        {/* Transaction Top Row */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '10px',
+                          paddingBottom: '10px',
+                          borderBottom: '1px solid #EEF3F0'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 800, fontSize: '15px', color: '#234B3C' }}>
+                              #{order.id}
+                            </span>
+                            <span style={{
+                              fontSize: '11.5px',
+                              fontWeight: 800,
+                              background: statusBg,
+                              color: statusColor,
+                              border: `1px solid ${statusBorder}`,
+                              padding: '2px 8px',
+                              borderRadius: '6px'
+                            }}>
+                              {order.status}
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#52635A' }}>
+                              {order.orderPlacedAt 
+                                ? new Date(order.orderPlacedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                : order.deliveryDate}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                            {order.paymentMethod === 'UPI' ? '💳 UPI Paid' : '💵 Cash on Delivery'}
+                          </div>
+                        </div>
+
+                        {/* Transaction Items */}
+                        <div style={{ fontSize: '13px', color: '#15221B' }}>
+                          <div style={{ fontWeight: 700, color: '#52635A', fontSize: '12px', marginBottom: '4px' }}>
+                            Items Purchased:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {order.items.map((i, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E2E8F0',
+                                  borderRadius: '8px',
+                                  padding: '3px 9px',
+                                  fontSize: '12px',
+                                  color: '#334155'
+                                }}
+                              >
+                                {i.name} — {i.qty} * {i.unit || 'Pack'} — ₹{i.price * i.qty}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Delivery Destination & Financials */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '12px',
+                          paddingTop: '8px',
+                          borderTop: '1px solid #EEF3F0'
+                        }}>
+                          <div style={{ fontSize: '12.5px', color: '#52635A' }}>
+                            🏢 <strong>{order.societyName || 'Greenfield Heights'}</strong> ({order.flatNo || 'Tower B - Flat 402'})
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '11px', color: '#64748B' }}>
+                                Sub: ₹{order.subtotal} | Delivery: {order.deliveryFee === 0 ? 'FREE' : `₹${order.deliveryFee}`}
+                              </div>
+                              <div style={{ fontSize: '16px', fontWeight: 800, color: '#15221B' }}>
+                                Total: ₹{order.totalAmount}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {isDelivered && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleReorder(order)}
+                                  style={{
+                                    background: '#EBF2EE',
+                                    color: '#234B3C',
+                                    border: '1px solid #C8DBD0',
+                                    padding: '7px 12px',
+                                    borderRadius: '9999px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <RotateCcw size={12} />
+                                  <span>Reorder</span>
+                                </button>
+                              )}
+
+                              <Link
+                                to={`/tracking/${order.id}`}
+                                style={{
+                                  background: '#234B3C',
+                                  color: '#FFFFFF',
+                                  padding: '7px 14px',
+                                  borderRadius: '9999px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <span>{isPending ? 'Track Live' : 'View Receipt'}</span>
+                                <ChevronRight size={13} />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* TAB 3: PROFILE & SOCIETY DETAILS */}
       {activeTab === 'profile' && (
@@ -978,10 +1201,7 @@ export default function UserProfilePage() {
 
             <button
               type="button"
-              onClick={() => {
-                logoutUser();
-                navigate('/');
-              }}
+              onClick={() => requestLogout('USER')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1007,7 +1227,7 @@ export default function UserProfilePage() {
 
       {/* Cancel Order Confirmation Modal */}
       {cancellingOrder && (
-        <div className="modal-backdrop-overlay" onClick={() => setCancellingOrder(null)}>
+        <div className="modal-backdrop-overlay">
           <div className="modal-dialog-box" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
             <button
               type="button"

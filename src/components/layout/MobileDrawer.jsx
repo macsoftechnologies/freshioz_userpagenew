@@ -11,10 +11,12 @@ import {
   LogOut, 
   PlusCircle, 
   HelpCircle,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
 import { useStore } from '../../context/StoreContext';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 export default function MobileDrawer() {
   const navigate = useNavigate();
@@ -29,12 +31,24 @@ export default function MobileDrawer() {
     logoutUser,
     partnerAuth,
     logoutPartner,
+    requestLogout,
     setIsAuthModalOpen,
     setIsSocietyRequestModalOpen,
     isWholesale,
     setIsWholesale,
     cutoffInfo
   } = useStore();
+
+  const { isInstallable, isInstalled, isIOS, triggerInstall } = usePwaInstall();
+  const [showIosTip, setShowIosTip] = React.useState(false);
+
+  const handlePwaClick = async () => {
+    if (isInstallable) {
+      await triggerInstall();
+    } else if (isIOS) {
+      setShowIosTip(!showIosTip);
+    }
+  };
 
   if (!isMobileDrawerOpen) return null;
 
@@ -99,9 +113,8 @@ export default function MobileDrawer() {
                 <button
                   type="button"
                   onClick={() => {
-                    logoutUser();
                     setIsMobileDrawerOpen(false);
-                    navigate('/');
+                    requestLogout('USER');
                   }}
                   style={{
                     display: 'flex',
@@ -154,9 +167,8 @@ export default function MobileDrawer() {
                 <button
                   type="button"
                   onClick={() => {
-                    logoutPartner();
                     setIsMobileDrawerOpen(false);
-                    navigate('/');
+                    requestLogout('PARTNER');
                   }}
                   style={{
                     display: 'flex',
@@ -208,7 +220,7 @@ export default function MobileDrawer() {
             )}
           </div>
 
-          {/* Wholesale Mode Switch */}
+          {/* Wholesale Mode Switch - Commented out for retail concentration
           <div>
             <div className="drawer-section-title">Ordering Mode</div>
             <div className="wholesale-switch-pill" style={{ width: '100%' }}>
@@ -230,6 +242,7 @@ export default function MobileDrawer() {
               </button>
             </div>
           </div>
+          */}
 
           {/* Society Selector */}
           <div>
@@ -293,7 +306,7 @@ export default function MobileDrawer() {
           <div>
             <div className="drawer-section-title">Explore Freshioz</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {(store?.categories || []).filter(c => c.status !== 'INACTIVE').map(cat => (
+              {(store?.categories || []).filter(c => c.status !== 'INACTIVE' && c.id !== 'WHOLESALE' && !c.name?.toLowerCase().includes('wholesale')).map(cat => (
                 <Link
                   key={cat.id}
                   to={`/catalog?cat=${cat.id}`}
@@ -303,6 +316,7 @@ export default function MobileDrawer() {
                   {cat.icon || '🥬'} {cat.name || cat.label}
                 </Link>
               ))}
+              {/* Wholesale Crates link commented out in favor of retail volume bulk discounts:
               <Link
                 to="/wholesale"
                 className="drawer-link-item"
@@ -310,6 +324,7 @@ export default function MobileDrawer() {
               >
                 📦 Wholesale Crates (Mess & Bulk)
               </Link>
+              */}
               {!activeUser && (
                 <Link
                   to="/society-portal"
@@ -337,6 +352,66 @@ export default function MobileDrawer() {
             </div>
             <div>Order before 9:00 PM &rarr; Freshly picked from mandi at dawn & delivered tomorrow morning!</div>
           </div>
+
+          {/* Progressive Web App (PWA) Mobile Install Card */}
+          {!isInstalled && (
+            <div style={{
+              background: 'linear-gradient(135deg, #15221B 0%, #234B3C 100%)',
+              borderRadius: '14px',
+              padding: '14px',
+              color: '#FFFFFF',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <img 
+                  src="/pwa-192.png" 
+                  alt="Freshioz Icon" 
+                  style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover' }} 
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF' }}>Install Freshioz App</div>
+                  <div style={{ fontSize: '11px', color: '#D1E0D7' }}>1-Tap ordering directly from your phone screen</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handlePwaClick}
+                style={{
+                  width: '100%',
+                  background: '#FCD34D',
+                  color: '#15221B',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '9px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Download size={15} strokeWidth={2.5} />
+                {isInstallable ? 'Install On Home Screen' : isIOS ? 'How to Install on iPhone' : 'Add to Home Screen'}
+              </button>
+
+              {showIosTip && (
+                <div style={{
+                  marginTop: '10px',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  fontSize: '11px',
+                  lineHeight: '1.4',
+                  color: '#F0FDF4'
+                }}>
+                  Tap Safari's <strong>Share</strong> button (📤) at the bottom, then scroll and select <strong>'Add to Home Screen'</strong> (➕).
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

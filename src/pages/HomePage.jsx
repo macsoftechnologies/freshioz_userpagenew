@@ -44,7 +44,7 @@ export default function HomePage() {
     : (store.products || []).filter(p => p.category === activeCategory);
 
   const dailySpecials = filteredProducts.slice(0, 8);
-  const wholesaleBestsellers = (store.products || []).slice(0, 4);
+  const wholesaleBestsellers = (store.products || []).filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);
 
   return (
     <div>
@@ -171,6 +171,7 @@ export default function HomePage() {
                 <ArrowRight size={16} />
               </button>
 
+              {/* Bulk Wholesale Crates button - Commented out for retail concentration
               <button
                 type="button"
                 className="hero-secondary-btn"
@@ -182,6 +183,7 @@ export default function HomePage() {
                 <Package size={16} />
                 <span>Bulk Wholesale Crates</span>
               </button>
+              */}
             </div>
           </div>
         </div>
@@ -241,7 +243,7 @@ export default function HomePage() {
             to="/catalog"
             className="section-view-all-btn"
           >
-            <span>View All ({store.products.length})</span>
+            <span>View All ({store.products?.length || 0})</span>
             <ArrowRight size={13} />
           </Link>
         </div>
@@ -272,7 +274,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Wholesale Banner & Showcase */}
+      {/* Wholesale Banner & Showcase - Commented out for retail concentration
       <section className="section-container">
         <div style={{
           background: 'linear-gradient(135deg, #FFF8ED 0%, #FEF3C7 100%)',
@@ -338,6 +340,7 @@ export default function HomePage() {
           )}
         </div>
       </section>
+      */}
 
       {/* How Freshioz Works (Next-Day Model Explainer) */}
       <section className="section-container" style={{ margin: '40px auto' }}>

@@ -13,21 +13,41 @@ export default function ProductCard({ product, forceWholesale = null }) {
   } = useStore();
 
   const currentWholesaleMode = forceWholesale !== null ? forceWholesale : isWholesale;
+  const isWholesaleAvailable = product.hasWholesale !== false && Boolean(product.wholesaleUnit) && Boolean(product.wholesalePrice);
+  const isWholesaleActive = currentWholesaleMode && isWholesaleAvailable;
 
-  const key = `${product.id}_${currentWholesaleMode ? 'ws' : 'rt'}`;
+  const key = `${product.id}_${isWholesaleActive ? 'ws' : 'rt'}`;
   const cartItem = cart.find(item => item.key === key);
   const qtyInCart = cartItem ? cartItem.qty : 0;
 
-  const displayUnit = currentWholesaleMode ? product.wholesaleUnit : product.retailUnit;
-  const displayPrice = currentWholesaleMode ? product.wholesalePrice : product.retailPrice;
-  const displayMarketPrice = currentWholesaleMode 
+  const minBulkQty = Number(product.bulkMinQty) || 0;
+  const bulkDiscount = Number(product.bulkDiscountPercent) || 0;
+  const isBulkQualified = minBulkQty > 0 && bulkDiscount > 0 && qtyInCart >= minBulkQty;
+  const effectiveRetailPrice = isBulkQualified
+    ? Math.round(product.retailPrice * (1 - bulkDiscount / 100))
+    : product.retailPrice;
+
+  const displayUnit = isWholesaleActive ? product.wholesaleUnit : (product.retailUnit || product.defaultUnit || '1 kg');
+  const displayPrice = isWholesaleActive ? product.wholesalePrice : effectiveRetailPrice;
+  const displayMarketPrice = isWholesaleActive 
     ? Math.round(product.wholesalePrice * 1.35) 
-    : product.retailMarketPrice;
+    : (isBulkQualified ? product.retailPrice : product.retailMarketPrice);
 
   // Single clean badge only - Wholesale gets savings %, Retail gets freshness pill. Never overlaps!
-  const badgeLabel = currentWholesaleMode 
-    ? (product.wholesaleSavings || 'Bulk Rate') 
-    : (product.badge || 'Harvested Today');
+  const getBadgeLabel = () => {
+    if (currentWholesaleMode && !isWholesaleAvailable) {
+      return 'Retail Pack Only';
+    }
+    if (isWholesaleActive) {
+      return product.wholesaleSavings || 'Bulk Rate';
+    }
+    if (product.badge === 'NONE' || product.badge === false) {
+      return null;
+    }
+    return product.badge || 'Harvested Today at Dawn';
+  };
+
+  const badgeLabel = getBadgeLabel();
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
@@ -74,6 +94,30 @@ export default function ProductCard({ product, forceWholesale = null }) {
             )}
             <span className="card-unit-label">{displayUnit}</span>
           </div>
+
+          {minBulkQty > 0 && bulkDiscount > 0 && (
+            <div style={{
+              fontSize: '10.5px',
+              color: isBulkQualified ? '#065F46' : '#B45309',
+              background: isBulkQualified ? '#ECFDF5' : '#FEF3C7',
+              border: isBulkQualified ? '1px solid #A7F3D0' : '1px solid #FDE68A',
+              borderRadius: '4px',
+              padding: '2px 6px',
+              fontWeight: 800,
+              marginTop: '4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              width: 'fit-content'
+            }}>
+              <span>{isBulkQualified ? '🎉' : '🏷️'}</span>
+              <span>
+                {isBulkQualified 
+                  ? `Hurray! ${bulkDiscount}% OFF Unlocked!` 
+                  : `Buy ${minBulkQty}+ ${(displayUnit || 'kg').replace(/^1\s*/, '')} @ ${bulkDiscount}% OFF`}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Price & Action Row: Bulletproof layout, NEVER clips button */}
@@ -89,10 +133,10 @@ export default function ProductCard({ product, forceWholesale = null }) {
           {qtyInCart === 0 ? (
             <button
               type="button"
-              className={`card-add-btn ${currentWholesaleMode ? 'wholesale-add-btn' : ''}`}
+              className={`card-add-btn ${isWholesaleActive ? 'wholesale-add-btn' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
-                addToCart(product, currentWholesaleMode);
+                addToCart(product, isWholesaleActive);
               }}
               aria-label={`Add ${product.name} to cart`}
             >
@@ -100,7 +144,7 @@ export default function ProductCard({ product, forceWholesale = null }) {
               <span>ADD</span>
             </button>
           ) : (
-            <div className={`card-qty-control ${currentWholesaleMode ? 'wholesale-qty' : ''}`}>
+            <div className={`card-qty-control ${isWholesaleActive ? 'wholesale-qty' : ''}`}>
               <button
                 type="button"
                 className="card-qty-step-btn"

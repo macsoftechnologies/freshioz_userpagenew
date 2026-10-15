@@ -5,7 +5,7 @@ import ProductCard from '../components/product/ProductCard';
 import ModernizedVanTransitHero from '../components/common/ModernizedVanTransitHero';
 
 export default function WholesalePage() {
-  const { store, selectedSociety } = useStore();
+  const { store } = useStore();
 
   return (
     <div className="section-container" style={{ paddingTop: '16px' }}>
@@ -88,35 +88,49 @@ export default function WholesalePage() {
             Minimum Order Quantity: 1 Master Crate or Sack. Quantities procured fresh for tomorrow morning.
           </p>
         </div>
-        <div style={{ fontSize: '13px', color: '#234B3C', fontWeight: 700, background: '#EBF2EE', padding: '6px 14px', borderRadius: '9999px' }}>
-          🏢 Delivering to: {selectedSociety?.name}
+        <div style={{ fontSize: '12.5px', color: '#234B3C', fontWeight: 800, background: '#EBF2EE', padding: '6px 14px', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span>📦 Direct Hub Bulk Dispatch</span>
         </div>
       </div>
 
-      {(store.products || []).length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '48px 20px',
-          background: '#FFFFFF',
-          borderRadius: '16px',
-          border: '1.5px dashed #CBD5E1',
-          margin: '12px 0 24px'
-        }}>
-          <div style={{ fontSize: '36px', marginBottom: '8px' }}>📦</div>
-          <h3 style={{ fontSize: '17px', color: '#0F172A', fontWeight: 800, marginBottom: '6px' }}>
-            No Wholesale Crates Published Yet
-          </h3>
-          <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '480px', margin: '0 auto' }}>
-            Once produce items are added with wholesale crate tiers in the Admin Portal, hostel messes and bulk buyers can purchase them here.
-          </p>
-        </div>
-      ) : (
-        <div className="produce-grid">
-          {store.products.map(product => (
-            <ProductCard key={`ws-page-${product.id}`} product={product} forceWholesale={true} />
-          ))}
-        </div>
-      )}
+      {(() => {
+        const wholesaleProducts = (store.products || []).filter(p => 
+          p.hasWholesale !== false && (
+            Boolean(p.wholesaleUnit) || 
+            (parseFloat(p.bulkMinQty) > 0 && parseFloat(p.bulkDiscountPercent) > 0) ||
+            Boolean(p.isBulk)
+          )
+        );
+
+        if (wholesaleProducts.length === 0) {
+          return (
+            <div style={{
+              textAlign: 'center',
+              padding: '48px 20px',
+              background: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1.5px dashed #CBD5E1',
+              margin: '12px 0 24px'
+            }}>
+              <div style={{ fontSize: '36px', marginBottom: '8px' }}>📦</div>
+              <h3 style={{ fontSize: '17px', color: '#0F172A', fontWeight: 800, marginBottom: '6px' }}>
+                No Wholesale Crates Published Yet
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '480px', margin: '0 auto' }}>
+                Items must be enabled for Wholesale / Bulk Crates in the Admin Portal to appear in this institutional catalog.
+              </p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="produce-grid">
+            {wholesaleProducts.map(product => (
+              <ProductCard key={`ws-page-${product.id}`} product={product} forceWholesale={true} />
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

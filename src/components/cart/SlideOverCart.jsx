@@ -14,16 +14,21 @@ export default function SlideOverCart() {
     clearCart, 
     cartSubtotal, 
     cartItemCount,
+    cartGst,
+    deliveryFee,
+    freeDeliveryThreshold,
+    deliveryConfig,
     selectedSociety,
     activeUser,
     cutoffInfo,
-    setIsAuthModalOpen
+    setIsAuthModalOpen,
+    totalBulkSavings,
+    getProductBulkPricing
   } = useStore();
 
   if (!isCartOpen) return null;
 
-  const deliveryFee = cartSubtotal >= 199 || cartSubtotal === 0 ? 0 : 25;
-  const grandTotal = cartSubtotal + deliveryFee;
+  const grandTotal = cartSubtotal + (cartSubtotal > 0 ? deliveryFee : 0) + (cartGst || 0);
 
   // Calculate society cashback estimation
   let estimatedCashback = 0;
@@ -108,40 +113,66 @@ export default function SlideOverCart() {
               </button>
             </div>
           ) : (
-            cart.map(item => (
-              <div key={item.key} className="cart-item-row">
-                <img src={item.image} alt={item.name} className="cart-item-thumb" />
+            cart.map(item => {
+              const bulkInfo = getProductBulkPricing ? getProductBulkPricing(item, item.qty) : { isEligible: false, savings: 0, totalWithDiscount: item.price * item.qty };
+              return (
+                <div key={item.key} className="cart-item-row">
+                  <img src={item.image} alt={item.name} className="cart-item-thumb" />
 
-                <div className="cart-item-meta">
-                  <div className="cart-item-title">{item.name}</div>
-                  <div className="cart-item-sub">
-                    {item.unit} • ₹{item.price} each
-                    {item.isWholesale && <span style={{ color: '#DE8821', fontWeight: 700, marginLeft: '6px' }}>[Wholesale]</span>}
+                  <div className="cart-item-meta">
+                    <div className="cart-item-title">{item.name}</div>
+                    <div className="cart-item-sub">
+                      {item.unit} • ₹{item.price} each
+                      {item.isWholesale && <span style={{ color: '#DE8821', fontWeight: 700, marginLeft: '6px' }}>[Wholesale]</span>}
+                    </div>
+
+                    {/* Price display with bulk tier breakdown */}
+                    {bulkInfo.isEligible ? (
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#16A34A', fontSize: '14px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ textDecoration: 'line-through', color: '#94A3B8', fontSize: '12px', fontWeight: 500 }}>
+                            ₹{item.price * item.qty}
+                          </span>
+                          <span>₹{bulkInfo.totalWithDiscount}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, marginTop: '1px' }}>
+                          🎉 Hurray! {bulkInfo.bulkDiscount}% OFF Unlocked (Saved ₹{bulkInfo.savings})
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '14px', marginTop: '2px' }}>
+                          ₹{item.price * item.qty}
+                        </div>
+                        {bulkInfo.bulkMinQty > 0 && bulkInfo.bulkDiscount > 0 && (
+                          <div style={{ fontSize: '11px', color: '#D97706', fontWeight: 600, marginTop: '2px' }}>
+                            💡 Add {bulkInfo.bulkMinQty - item.qty} more to unlock {bulkInfo.bulkDiscount}% savings!
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '14px', marginTop: '2px' }}>
-                    ₹{item.price * item.qty}
+
+                  <div className="qty-counter-control" style={{ padding: '3px 6px' }}>
+                    <button
+                      type="button"
+                      className="qty-step-btn"
+                      onClick={() => updateCartQty(item.key, -1)}
+                    >
+                      <Minus size={11} />
+                    </button>
+                    <span className="qty-val-display" style={{ fontSize: '12px' }}>{item.qty}</span>
+                    <button
+                      type="button"
+                      className="qty-step-btn"
+                      onClick={() => updateCartQty(item.key, 1)}
+                    >
+                      <Plus size={11} />
+                    </button>
                   </div>
                 </div>
-
-                <div className="qty-counter-control" style={{ padding: '3px 6px' }}>
-                  <button
-                    type="button"
-                    className="qty-step-btn"
-                    onClick={() => updateCartQty(item.key, -1)}
-                  >
-                    <Minus size={11} />
-                  </button>
-                  <span className="qty-val-display" style={{ fontSize: '12px' }}>{item.qty}</span>
-                  <button
-                    type="button"
-                    className="qty-step-btn"
-                    onClick={() => updateCartQty(item.key, 1)}
-                  >
-                    <Plus size={11} />
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -173,13 +204,25 @@ export default function SlideOverCart() {
                 <span>Items Subtotal</span>
                 <span>₹{cartSubtotal}</span>
               </div>
+              {totalBulkSavings > 0 && (
+                <div className="bill-summary-row" style={{ color: '#16A34A', fontWeight: 700 }}>
+                  <span>Bulk Volume Savings</span>
+                  <span>-₹{totalBulkSavings}</span>
+                </div>
+              )}
               <div className="bill-summary-row">
                 <span>Next-Day Society Delivery</span>
                 <span>{deliveryFee === 0 ? <strong style={{ color: '#78B159' }}>FREE</strong> : `₹${deliveryFee}`}</span>
               </div>
-              {deliveryFee > 0 && (
+              {deliveryFee > 0 && freeDeliveryThreshold !== Infinity && (
                 <div style={{ fontSize: '11px', color: '#83968D' }}>
-                  Add ₹{199 - cartSubtotal} more for Free Society Delivery!
+                  Add ₹{freeDeliveryThreshold - cartSubtotal} more for Free Society Delivery!
+                </div>
+              )}
+              {cartGst > 0 && (
+                <div className="bill-summary-row">
+                  <span>GST / Taxes</span>
+                  <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{cartGst}</span>
                 </div>
               )}
               <div className="bill-total-row">

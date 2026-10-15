@@ -10,7 +10,10 @@ import {
   CheckCircle2, 
   ArrowLeft,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  Package,
+  X
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
@@ -19,16 +22,23 @@ export default function CheckoutPage() {
   const { 
     cart, 
     cartSubtotal, 
+    cartGst,
+    deliveryFee,
+    freeDeliveryThreshold,
     selectedSociety, 
     activeUser, 
     cutoffInfo, 
+    servingWarehouse,
     defaultWarehouse, 
-    placeOrder 
+    placeOrder,
+    totalBulkSavings,
+    getProductBulkPricing
   } = useStore();
 
   const [deliverySlot, setDeliverySlot] = useState(defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [isPlacing, setIsPlacing] = useState(false);
+  const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
 
   if (cart.length === 0) {
     return (
@@ -51,8 +61,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const deliveryFee = cartSubtotal >= 199 ? 0 : 25;
-  const grandTotal = cartSubtotal + deliveryFee;
+  const grandTotal = cartSubtotal + (cartSubtotal > 0 ? deliveryFee : 0) + (cartGst || 0);
 
   let estimatedCashback = 0;
   if (selectedSociety) {
@@ -63,12 +72,19 @@ export default function CheckoutPage() {
     }
   }
 
-  const handlePlaceOrder = (e) => {
+  // Pre-placement validation: opens the confirmation popup
+  const handleInitiatePlaceOrder = (e) => {
     e.preventDefault();
+    setIsConfirmOrderModalOpen(true);
+  };
+
+  // User confirmed in popup: commits order to store
+  const handleExecuteConfirmedOrder = async () => {
+    setIsConfirmOrderModalOpen(false);
     setIsPlacing(true);
 
-    setTimeout(() => {
-      const order = placeOrder({
+    try {
+      const order = await placeOrder({
         deliverySlot,
         paymentMethod
       });
@@ -76,7 +92,10 @@ export default function CheckoutPage() {
       if (order) {
         navigate(`/tracking/${order.id}`);
       }
-    }, 600);
+    } catch (err) {
+      setIsPlacing(false);
+      alert(err.message || 'Failed to place order. Please check item stock.');
+    }
   };
 
   return (
@@ -257,17 +276,36 @@ export default function CheckoutPage() {
           <h3 style={{ fontSize: '18px', color: '#234B3C', marginBottom: '16px' }}>Order Items ({cart.length})</h3>
 
           <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-            {cart.map(item => (
-              <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#15221B' }}>{item.name}</div>
-                  <div style={{ color: '#52635A', fontSize: '11.5px' }}>{item.unit} × {item.qty}</div>
+            {cart.map(item => {
+              const bulkInfo = getProductBulkPricing ? getProductBulkPricing(item, item.qty) : { isEligible: false, savings: 0, totalWithDiscount: item.price * item.qty };
+              return (
+                <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#15221B' }}>{item.name}</div>
+                    <div style={{ color: '#52635A', fontSize: '11.5px' }}>
+                      {item.qty} × {item.unit}
+                      {bulkInfo.isEligible && (
+                        <span style={{ color: '#16A34A', fontWeight: 700, marginLeft: '6px' }}>
+                          ({bulkInfo.bulkDiscount}% Bulk Tier)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    {bulkInfo.isEligible ? (
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#16A34A' }}>₹{bulkInfo.totalWithDiscount}</div>
+                        <div style={{ fontSize: '11px', color: '#94A3B8', textDecoration: 'line-through' }}>₹{item.price * item.qty}</div>
+                      </div>
+                    ) : (
+                      <div style={{ fontWeight: 800, color: '#234B3C' }}>
+                        ₹{item.price * item.qty}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontWeight: 800, color: '#234B3C' }}>
-                  ₹{item.price * item.qty}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* CLIENT SPECIFICATION: Hidden from customer website - commented out, not deleted
@@ -296,14 +334,22 @@ export default function CheckoutPage() {
               <span>Produce Subtotal</span>
               <span>₹{cartSubtotal}</span>
             </div>
+            {totalBulkSavings > 0 && (
+              <div className="bill-summary-row" style={{ color: '#16A34A', fontWeight: 700 }}>
+                <span>Bulk Volume Savings</span>
+                <span>-₹{totalBulkSavings}</span>
+              </div>
+            )}
             <div className="bill-summary-row">
               <span>Next-Day Delivery Fee</span>
               <span>{deliveryFee === 0 ? <strong style={{ color: '#78B159' }}>FREE</strong> : `₹${deliveryFee}`}</span>
             </div>
-            <div className="bill-summary-row">
-              <span>GST (Fresh Unprocessed Produce)</span>
-              <span>₹0.00 (0% Exempt)</span>
-            </div>
+            {cartGst > 0 && (
+              <div className="bill-summary-row">
+                <span>GST / Taxes</span>
+                <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{cartGst}</span>
+              </div>
+            )}
             <div className="bill-total-row">
               <span>Total Payable</span>
               <span>₹{grandTotal}</span>
@@ -315,12 +361,161 @@ export default function CheckoutPage() {
             type="button"
             className="checkout-action-btn"
             disabled={isPlacing}
-            onClick={handlePlaceOrder}
+            onClick={handleInitiatePlaceOrder}
           >
             {isPlacing ? 'Confirming with Warehouse...' : `Place Next-Day Order • ₹${grandTotal}`}
           </button>
         </div>
       </div>
+
+      {/* ================= PAYMENT & ORDER CONFIRMATION POPUP MODAL ================= */}
+      {isConfirmOrderModalOpen && (
+        <div 
+          className="modal-backdrop-overlay" 
+          style={{ zIndex: 2000 }}
+        >
+          <div 
+            className="modal-dialog-box" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              maxWidth: '520px', 
+              width: '92%',
+              background: '#FFFFFF',
+              borderRadius: '20px',
+              padding: '26px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              border: '2px solid #E2E8F0'
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: '#EBF2EE',
+                  color: '#234B3C',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <HelpCircle size={24} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                    Confirm Your Order & Delivery?
+                  </h3>
+                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+                    Fresh dawn produce locked for direct society drop
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsConfirmOrderModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Order Review Card */}
+            <div style={{ background: '#F8FAFC', borderRadius: '14px', border: '1.5px solid #E2E8F0', padding: '16px', marginBottom: '20px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Destination:</span>
+                <span style={{ color: '#0F172A', fontWeight: 800, textAlign: 'right' }}>
+                  {selectedSociety?.name} {activeUser?.flatNo ? `(${activeUser.flatNo})` : ''}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Delivery Window:</span>
+                <span style={{ color: '#059669', fontWeight: 800, textAlign: 'right' }}>
+                  {cutoffInfo.formattedDeliveryDate} • {deliverySlot.split('(')[0].trim()}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Basket Items:</span>
+                <span style={{ color: '#334155', fontWeight: 700 }}>
+                  {cart.length} produce packs ({cart.reduce((s, i) => s + i.qty, 0)} units)
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
+                <span style={{ color: '#64748B', fontWeight: 600 }}>Payment Method:</span>
+                <span style={{ color: '#B45309', fontWeight: 800 }}>
+                  {paymentMethod === 'UPI' ? 'Instant UPI (GPay/PhonePe)' : 'Pay on Delivery (Cash/QR)'}
+                </span>
+              </div>
+
+              {totalBulkSavings > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
+                  <span style={{ color: '#16A34A', fontWeight: 700 }}>Bulk Tier Savings:</span>
+                  <span style={{ color: '#16A34A', fontWeight: 800 }}>
+                    -₹{totalBulkSavings}
+                  </span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
+                <span style={{ color: '#0F172A', fontWeight: 800, fontSize: '14px' }}>Total Amount Payable:</span>
+                <span style={{ color: '#234B3C', fontWeight: 900, fontSize: '20px' }}>
+                  ₹{grandTotal}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons: Cancel vs Confirm */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setIsConfirmOrderModalOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px 18px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel / Review Basket
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteConfirmedOrder}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#234B3C',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(35, 75, 60, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <CheckCircle2 size={16} />
+                <span>Yes, Confirm & Place Order</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

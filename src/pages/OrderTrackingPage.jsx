@@ -19,35 +19,34 @@ import LiveVanTransitVisualizer from '../components/tracking/LiveVanTransitVisua
 
 export default function OrderTrackingPage() {
   const { orderId } = useParams();
-  const { store } = useStore();
+  const { store, activeUser } = useStore();
 
-  const fallbackOrder = {
-    id: orderId || 'FZ-2026-8815',
-    userId: 'user-1',
-    userName: 'Kavitha R',
-    userPhone: '9845012345',
-    societyId: 'soc-1',
-    societyName: 'Greenfield Heights Apartments',
-    flatNo: 'Tower B - Flat 402',
-    orderType: 'RETAIL',
-    items: [
-      { id: 'prod-7', name: 'Royal Shimla Red Delicious Apples', unit: '4 pcs (Approx 600g)', qty: 2, price: 125 },
-      { id: 'prod-8', name: 'Juicy Nagpur Sweet Oranges (Mosambi)', unit: '1 kg', qty: 1, price: 78 },
-      { id: 'prod-12', name: 'Tender Coconut (Sweet Water)', unit: '1 pc', qty: 2, price: 52 }
-    ],
-    subtotal: 432,
-    deliveryFee: 0,
-    gstAmount: 0,
-    totalAmount: 432,
-    deliveryDate: 'Tomorrow Morning',
-    deliverySlot: 'Morning Fresh Slot (06:30 AM - 08:30 AM)',
-    orderPlacedAt: new Date().toISOString(),
-    status: 'OUT_FOR_DELIVERY',
-    paymentMethod: 'UPI',
-    societyCommissionEarned: 15.12
-  };
+  // Secure order lookup: strictly match requested orderId or current user's latest order
+  const userOrders = (store?.orders || []).filter(o => {
+    if (!activeUser) return false;
+    return o.userPhone === activeUser.phone || o.userId === activeUser.id;
+  });
 
-  const currentOrder = store?.orders?.find(o => o.id === orderId) || store?.orders?.[0] || fallbackOrder;
+  const currentOrder = (store?.orders || []).find(o => o.id === orderId || o.uuid === orderId) 
+    || userOrders[0] 
+    || null;
+
+  if (!currentOrder) {
+    return (
+      <div className="section-container" style={{ paddingTop: '40px', maxWidth: '700px', textAlign: 'center' }}>
+        <div style={{ background: '#FFFFFF', padding: '48px 24px', borderRadius: '16px', border: '1.5px solid #E5ECE7', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+          <Clock size={48} color="#234B3C" style={{ margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: '22px', color: '#234B3C', marginBottom: '8px', fontWeight: 800 }}>No Order Found</h2>
+          <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '24px' }}>
+            {orderId ? `We couldn't find an order with reference "${orderId}".` : 'You do not have any active harvest delivery in transit right now.'}
+          </p>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '8px', background: '#234B3C', color: '#FFF', textDecoration: 'none', fontWeight: 700, fontSize: '13.5px' }}>
+            <ArrowLeft size={16} /> Back to Daily Harvest
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const steps = [
     { key: 'CONFIRMED', title: '1. Order Confirmed & Batched', desc: 'Batched with other society residents for dawn mandi harvest', icon: Clock },
@@ -71,33 +70,21 @@ export default function OrderTrackingPage() {
 
   const currentStepIdx = getStepIndex(currentOrder?.status || 'CONFIRMED');
 
-  // Allow simulator toggle for demonstration purposes
-  const advanceOrderStatus = (nextStatus) => {
-    saveFreshiozStore(prev => {
-      const isNewlyDelivered = nextStatus === 'DELIVERED' && currentOrder?.status !== 'DELIVERED';
-      const commEarned = (isNewlyDelivered && currentOrder?.societyCommissionEarned) ? currentOrder.societyCommissionEarned : 0;
+  const advanceOrderStatus = () => {
+    if (!currentOrder || currentOrder.status === 'DELIVERED') return;
+    const statusCycle = ['CONFIRMED', 'PROCURING', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+    const currentIdx = statusCycle.indexOf(currentOrder.status);
+    const nextIdx = currentIdx >= 0 ? Math.min(currentIdx + 1, statusCycle.length - 1) : 1;
+    const nextStatus = statusCycle[nextIdx];
 
-      const updatedSocieties = isNewlyDelivered ? prev.societies.map(s => {
-        if (s.id === currentOrder?.societyId || s.name === currentOrder?.societyName) {
-          return {
-            ...s,
-            balanceEarned: Number(((s.balanceEarned || 0) + commEarned).toFixed(2)),
-            totalOrdersDelivered: (s.totalOrdersDelivered || 0) + 1
-          };
-        }
-        return s;
-      }) : prev.societies;
-
-      return {
-        ...prev,
-        societies: updatedSocieties,
-        orders: prev.orders.map(o => o.id === currentOrder.id ? {
-          ...o,
-          status: nextStatus,
-          deliveredAt: nextStatus === 'DELIVERED' ? new Date().toISOString() : o.deliveredAt
-        } : o)
-      };
-    });
+    saveFreshiozStore(prev => ({
+      ...prev,
+      orders: (prev.orders || []).map(o => o.id === currentOrder.id ? {
+        ...o,
+        status: nextStatus,
+        ...(nextStatus === 'DELIVERED' ? { deliveredAt: new Date().toISOString() } : {})
+      } : o)
+    }));
   };
 
   return (
@@ -244,34 +231,6 @@ export default function OrderTrackingPage() {
             );
           })}
         </div>
-
-        {/* Demo Simulation Stepper */}
-        <div style={{ borderTop: '1px solid #E5ECE7', marginTop: '24px', paddingTop: '16px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#83968D', marginBottom: '8px', textTransform: 'uppercase' }}>
-            ⚡ Demo Pipeline Simulator (Advance order status):
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {['CONFIRMED', 'PROCURING', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED'].map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => advanceOrderStatus(st)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  background: currentOrder?.status === st ? '#234B3C' : '#F0F4F2',
-                  color: currentOrder?.status === st ? '#FFF' : '#52635A',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {st.replace(/_/g, ' ')}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Items Summary in this Order */}
@@ -290,7 +249,7 @@ export default function OrderTrackingPage() {
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0F4F2' }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B' }}>{item.name}</div>
-                <div style={{ fontSize: '12px', color: '#52635A' }}>{item.unit} × {item.qty}</div>
+                <div style={{ fontSize: '12px', color: '#52635A' }}>{item.qty} * {item.unit}</div>
               </div>
               <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '14px' }}>
                 ₹{item.price * item.qty}
@@ -299,9 +258,19 @@ export default function OrderTrackingPage() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '10px', fontSize: '16px', fontWeight: 800, color: '#234B3C' }}>
-          <span>Total Paid ({currentOrder?.paymentMethod})</span>
-          <span>₹{currentOrder?.totalAmount}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '10px', fontSize: '15px', fontWeight: 800, color: '#234B3C', borderTop: '1px solid #E2E8F0' }}>
+          <div>
+            <span>{(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') ? (
+              (currentOrder?.paymentStatus === 'PAID' || currentOrder?.codPaymentReceived) ? (
+                <span style={{ color: '#166534' }}>Total Paid (Cash on Delivery - Collected ✅)</span>
+              ) : (
+                <span style={{ color: '#B91C1C' }}>Amount Due on Delivery (Cash / UPI)</span>
+              )
+            ) : (
+              <span>Total Paid ({currentOrder?.paymentMethod || 'Online'})</span>
+            )}</span>
+          </div>
+          <span style={{ fontSize: '17px' }}>₹{currentOrder?.totalAmount}</span>
         </div>
       </div>
     </div>

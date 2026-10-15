@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getFreshiozStore, saveFreshiozStore, syncFreshiozStoreFromServer } from '../shared/freshiozStore';
+import { getFreshiozStore, saveFreshiozStore, syncFreshiozStoreFromServer, generateId, generateUUID, API_BASE_URL } from '../shared/freshiozStore';
 
 const StoreContext = createContext(null);
 
@@ -23,10 +23,10 @@ export function StoreProvider({ children }) {
     };
     window.addEventListener('focus', handleFocus);
 
-    // Fast light poll (1.5s) for instant real-time mirroring between two open browsers
+    // Live polling (5s) for real-time mirroring across multiple tabs and devices
     const interval = setInterval(() => {
       syncFreshiozStoreFromServer();
-    }, 1500);
+    }, 5000);
 
     return () => {
       window.removeEventListener('freshioz_store_updated', handleSync);
@@ -104,9 +104,10 @@ export function StoreProvider({ children }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  // Calculate Warehouse Cut-Off Logistics based on Resident's Society Serving Hub
-  const servingShop = (store.shops || []).find(s => s.id === selectedSociety?.nearestShopId);
-  const servingWarehouse = (store.warehouses || []).find(w => w.id === servingShop?.warehouseId) || store.warehouses[0] || { cutoffTime: '21:00', openTime: '05:00', slots: [] };
+  // Calculate Warehouse Cut-Off Logistics directly based on Resident's Society Serving Regional Warehouse Hub
+  const servingWarehouse = (store.warehouses || []).find(w => w.id === selectedSociety?.warehouseId) 
+    || (store.warehouses || [])[0] 
+    || { cutoffTime: '21:00', openTime: '05:00', slots: [] };
   const defaultWarehouse = servingWarehouse;
   
   const getCutoffCalculations = () => {
@@ -212,8 +213,68 @@ export function StoreProvider({ children }) {
 
   const clearCart = () => setCart([]);
 
-  const cartSubtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+  // Quantity-based bulk volume tier calculation (e.g. above 5kg or 10kg gets discount %)
+  const getProductBulkPricing = (productOrItem, qty) => {
+    const prod = (store.products || []).find(p => p.id === (productOrItem?.productId || productOrItem?.id)) || productOrItem || {};
+    const retailPrice = Number(prod.retailPrice ?? productOrItem?.price) || 0;
+    const minQty = Number(prod.bulkMinQty) || 0;
+    const discountPercent = Number(prod.bulkDiscountPercent) || 0;
+    const unit = prod.retailUnit || prod.defaultUnit || 'kg';
+
+    const isBulkEligible = minQty > 0 && discountPercent > 0 && qty >= minQty;
+    const effectiveUnitPrice = isBulkEligible
+      ? Math.round(retailPrice * (1 - discountPercent / 100))
+      : retailPrice;
+    const totalWithoutDiscount = Math.round(retailPrice * qty);
+    const totalWithDiscount = Math.round(effectiveUnitPrice * qty);
+    const savings = Math.max(0, totalWithoutDiscount - totalWithDiscount);
+    const remainingForDiscount = (!isBulkEligible && minQty > 0) ? Math.max(0, minQty - qty) : 0;
+
+    return {
+      retailPrice,
+      minQty,
+      discountPercent,
+      isBulkEligible,
+      effectiveUnitPrice,
+      totalWithoutDiscount,
+      totalWithDiscount,
+      savings,
+      remainingForDiscount,
+      unit
+    };
+  };
+
+  const cartSubtotal = Number(
+    cart.reduce((acc, item) => {
+      const pricing = getProductBulkPricing(item, item.qty);
+      return acc + pricing.totalWithDiscount;
+    }, 0).toFixed(2)
+  );
+
+  const totalBulkSavings = Number(
+    cart.reduce((acc, item) => {
+      const pricing = getProductBulkPricing(item, item.qty);
+      return acc + pricing.savings;
+    }, 0).toFixed(2)
+  );
+
   const cartItemCount = cart.reduce((acc, item) => acc + item.qty, 0);
+
+  // Calculate dynamic GST for current items in cart
+  const cartGst = Math.round(
+    cart.reduce((acc, item) => {
+      const prod = (store.products || []).find(p => p.id === item.productId);
+      const gstRate = prod?.gstPercent || 0;
+      const pricing = getProductBulkPricing(item, item.qty);
+      return acc + (gstRate > 0 ? (pricing.totalWithDiscount * gstRate) / 100 : 0);
+    }, 0)
+  );
+
+  // Dynamic delivery fee calculation from store.deliveryConfig
+  const deliveryConfig = store.deliveryConfig || { baseFee: 25, freeDeliveryThreshold: 199, enableFreeDelivery: true };
+  const freeDeliveryThreshold = deliveryConfig.enableFreeDelivery ? (deliveryConfig.freeDeliveryThreshold ?? 199) : Infinity;
+  const baseDeliveryFee = deliveryConfig.baseFee ?? 25;
+  const deliveryFee = (cartSubtotal >= freeDeliveryThreshold || cartSubtotal === 0) ? 0 : baseDeliveryFee;
 
   // Auth Operations
   const loginUser = (userData) => {
@@ -227,6 +288,7 @@ export function StoreProvider({ children }) {
     if (userData.societyId) {
       setSelectedSocietyId(userData.societyId);
     }
+
     setIsAuthModalOpen(false);
     window.dispatchEvent(new CustomEvent('freshioz_active_user_updated', { detail: userData }));
   };
@@ -235,6 +297,23 @@ export function StoreProvider({ children }) {
     setActiveUser(null);
     localStorage.removeItem('freshioz_active_user');
     window.dispatchEvent(new CustomEvent('freshioz_active_user_updated', { detail: null }));
+  };
+
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [logoutTarget, setLogoutTarget] = useState('USER'); // 'USER' | 'PARTNER'
+
+  const requestLogout = (target = 'USER') => {
+    setLogoutTarget(target);
+    setIsLogoutModalOpen(true);
+  };
+
+  const confirmLogout = () => {
+    if (logoutTarget === 'PARTNER') {
+      logoutPartner();
+    } else {
+      logoutUser();
+    }
+    setIsLogoutModalOpen(false);
   };
 
   const loginPartner = (partnerData) => {
@@ -258,94 +337,149 @@ export function StoreProvider({ children }) {
   };
 
   // Place Order Flow
-  const placeOrder = ({ deliverySlot, paymentMethod }) => {
+  const placeOrder = async ({ deliverySlot, paymentMethod }) => {
     if (!activeUser || cart.length === 0) return null;
 
     const society = selectedSociety;
-    const newOrderId = `FZ-${Date.now().toString().slice(-4)}${Math.floor(Math.random() * 90 + 10)}`;
-
-    // Calculate Society Cashback/Commission
-    let commissionEarned = 0;
-    if (society) {
-      if (society.commissionType === 'PERCENTAGE') {
-        commissionEarned = Number(((cartSubtotal * (society.commissionValue || 3.5)) / 100).toFixed(2));
-      } else {
-        commissionEarned = Number((society.commissionValue || 5.0).toFixed(2));
-      }
-    }
-
-    // Calculate Line-Item GST dynamically (Exempt raw produce is 0%, taxable items calculate per product gstPercent)
-    let totalLineItemGst = 0;
-    cart.forEach(i => {
-      const prod = (store.products || []).find(p => p.id === i.productId);
-      const gstRate = prod?.gstPercent || 0;
-      if (gstRate > 0) {
-        totalLineItemGst += ((i.price * i.qty) * gstRate) / 100;
-      }
-    });
-    const calculatedGst = Math.round(totalLineItemGst);
-    const calculatedDeliveryFee = cartSubtotal >= 199 ? 0 : 25;
-    const finalTotal = cartSubtotal + calculatedDeliveryFee + calculatedGst;
-
     const defaultSlotLabel = servingWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)';
 
-    const orderRecord = {
-      id: newOrderId,
-      userId: activeUser.phone,
-      userName: activeUser.name,
+    const userToken = localStorage.getItem('freshioz_user_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (userToken) {
+      headers['Authorization'] = `Bearer ${userToken}`;
+    }
+
+    const payload = {
       userPhone: activeUser.phone,
-      societyId: society?.id,
-      societyName: society?.name,
-      flatNo: activeUser.flatNo,
-      orderType: isWholesale ? 'WHOLESALE' : 'RETAIL',
-      items: cart.map(i => ({
-        id: i.productId,
-        name: i.name,
-        unit: i.unit,
-        qty: i.qty,
-        price: i.price,
-        isWholesale: i.isWholesale
-      })),
+      userName: activeUser.name,
+      societyId: society?.id || null,
+      societyName: society?.name || 'Direct Resident Delivery',
+      flatNo: activeUser.flatNo || 'Flat 101',
+      warehouseId: servingWarehouse?.id || null,
+      warehouseCode: servingWarehouse?.code || null,
+      orderType: totalBulkSavings > 0 ? 'BULK' : 'RETAIL',
       subtotal: cartSubtotal,
-      deliveryFee: calculatedDeliveryFee,
-      gstAmount: calculatedGst,
-      totalAmount: finalTotal,
-      deliveryDate: cutoffInfo.formattedDeliveryDate,
+      bulkSavings: totalBulkSavings,
+      deliveryFee: deliveryFee,
+      gstAmount: cartGst,
+      totalAmount: cartSubtotal + deliveryFee + cartGst,
+      deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
       deliverySlot: deliverySlot || defaultSlotLabel,
-      orderPlacedAt: new Date().toISOString(),
-      status: 'CONFIRMED',
-      paymentMethod,
-      warehouseId: servingWarehouse.id || 'wh-1',
-      warehouseCode: servingWarehouse.code || 'WH-BLR-NORTH',
-      // Society commission is recorded for accrual, but NOT credited to society wallet until order is DELIVERED!
-      societyCommissionEarned: commissionEarned
+      paymentMethod: paymentMethod || 'UPI',
+      paymentStatus: paymentMethod === 'UPI' ? 'PAID' : 'PENDING_COD',
+      items: cart.map(i => {
+        const pricing = getProductBulkPricing(i, i.qty);
+        return {
+          productId: i.productId || i.id,
+          name: i.name,
+          unit: i.unit || '1 kg',
+          qty: i.qty,
+          price: i.price,
+          effectivePrice: pricing.effectiveUnitPrice,
+          totalPrice: pricing.totalWithDiscount,
+          isBulkApplied: !!pricing.isBulkEligible,
+          bulkDiscountPercent: pricing.discountPercent || 0,
+          bulkSavings: pricing.savings || 0
+        };
+      })
+    };
+
+    let serverOrder = null;
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || `Order creation failed (${res.status})`);
+      }
+
+      serverOrder = await res.json();
+    } catch (e) {
+      console.error('Order placement API error:', e);
+      throw e;
+    }
+
+    const confirmedOrder = {
+      ...serverOrder,
+      id: serverOrder.id,
+      uuid: serverOrder.uuid || serverOrder.id,
+      userId: serverOrder.userPhone || activeUser.phone,
+      userName: serverOrder.userName || activeUser.name,
+      userPhone: serverOrder.userPhone || activeUser.phone,
+      societyId: serverOrder.societyId || society?.id,
+      societyName: serverOrder.societyName || society?.name,
+      flatNo: serverOrder.flatNo || activeUser.flatNo,
+      orderPlacedAt: serverOrder.orderPlacedAt || new Date().toISOString(),
+      orderPlacedAtFormatted: serverOrder.orderPlacedAtFormatted,
+      status: serverOrder.status || 'CONFIRMED',
+      items: serverOrder.items || payload.items
     };
 
     saveFreshiozStore(prev => ({
       ...prev,
-      orders: [orderRecord, ...prev.orders]
+      orders: [confirmedOrder, ...(prev.orders || []).filter(o => o.id !== confirmedOrder.id)]
     }));
 
     clearCart();
-    return orderRecord;
+    return confirmedOrder;
   };
 
   // Submit New Society Request
-  const requestNewSociety = (leadData) => {
+  const requestNewSociety = async (leadData) => {
     const newLead = {
-      id: `req-${Date.now()}`,
+      id: generateId('FRZ_REQ'),
+      uuid: generateUUID(),
       ...leadData,
       createdAt: new Date().toISOString(),
       status: 'NEW_LEAD'
     };
 
-    saveFreshiozStore(prev => ({
-      ...prev,
-      societyRequests: [newLead, ...(prev.societyRequests || [])]
-    }));
+    try {
+      const res = await fetch(`${API_BASE_URL}/inbound-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          societyName: leadData.societyName,
+          contactName: leadData.requesterName || leadData.contactName || 'Resident Lead',
+          contactPhone: leadData.requesterPhone || leadData.contactPhone || '9876543210',
+          contactRole: leadData.contactRole || 'Resident',
+          flatCount: Number(leadData.estimatedFlats || leadData.flatCount) || undefined,
+          clusterZone: leadData.clusterZone || leadData.city || undefined,
+          address: leadData.address || undefined
+        })
+      });
 
-    setIsSocietyRequestModalOpen(false);
-    return newLead;
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || `Community onboarding request failed (${res.status})`);
+      }
+
+      const serverLead = await res.json();
+      if (serverLead?.id) newLead.id = serverLead.id;
+      if (serverLead?.uuid) newLead.uuid = serverLead.uuid;
+
+      // Only update state upon confirmed database persistence
+      setStore(prev => {
+        const updated = {
+          ...prev,
+          societyRequests: [newLead, ...(prev.societyRequests || [])]
+        };
+        try {
+          localStorage.setItem('freshioz_v2_central_store', JSON.stringify(updated));
+        } catch (err) {}
+        return updated;
+      });
+
+      setIsSocietyRequestModalOpen(false);
+      return newLead;
+    } catch (e) {
+      console.error('Error submitting inbound request to API:', e);
+      throw e;
+    }
   };
 
   return (
@@ -370,7 +504,14 @@ export function StoreProvider({ children }) {
         removeFromCart,
         clearCart,
         cartSubtotal,
+        totalBulkSavings,
+        getProductBulkPricing,
         cartItemCount,
+        cartGst,
+        deliveryConfig,
+        deliveryFee,
+        freeDeliveryThreshold,
+        baseDeliveryFee,
         cutoffInfo,
         servingWarehouse,
         defaultWarehouse,
@@ -384,7 +525,12 @@ export function StoreProvider({ children }) {
         isCartOpen,
         setIsCartOpen,
         isMobileDrawerOpen,
-        setIsMobileDrawerOpen
+        setIsMobileDrawerOpen,
+        isLogoutModalOpen,
+        setIsLogoutModalOpen,
+        logoutTarget,
+        requestLogout,
+        confirmLogout
       }}
     >
       {children}

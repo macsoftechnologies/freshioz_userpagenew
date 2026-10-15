@@ -21,6 +21,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
     store,
     activeUser, 
     logoutUser,
+    requestLogout,
     partnerAuth,
     logoutPartner,
     setIsAuthModalOpen,
@@ -48,12 +49,13 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
   // Dynamically pulled from Master Data catalog categories
   const categories = [
     { id: 'ALL', label: 'All Items 🌱', path: '/' },
-    ...(store?.categories || []).filter(c => c.status !== 'INACTIVE').map(cat => ({
+    ...(store?.categories || []).filter(c => c.status !== 'INACTIVE' && c.id !== 'WHOLESALE' && !c.name?.toLowerCase().includes('wholesale')).map(cat => ({
       id: cat.id,
       label: `${cat.name || cat.label} ${cat.icon || ''}`.trim(),
       path: `/catalog?cat=${cat.id}`
-    })),
-    { id: 'WHOLESALE', label: 'Wholesale Crates 📦', path: '/wholesale' }
+    }))
+    // Wholesale Crates link commented out in favor of retail volume bulk discounts:
+    // { id: 'WHOLESALE', label: 'Wholesale Crates 📦', path: '/wholesale' }
   ];
 
   return (
@@ -72,7 +74,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
           <input
             type="text"
             className="search-input-box"
-            placeholder="Search farm tomatoes, spinach, Shimla apples, bulk crates..."
+            placeholder="Search farm tomatoes, spinach, Shimla apples, fresh harvest..."
             value={searchQuery}
             onChange={(e) => {
               if (onSearchChange) onSearchChange(e.target.value);
@@ -83,9 +85,9 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
           />
         </div>
 
-        {/* Right: Wholesale Switch + Society Portal + Account + Cart */}
+        {/* Right: Society Portal + Account + Cart */}
         <div className="desktop-header-right">
-          {/* Wholesale Mode Toggle */}
+          {/* Wholesale Mode Toggle - Commented out for retail concentration
           <div className="wholesale-switch-pill" title="Toggle Retail vs Wholesale Crate Rates">
             <button
               type="button"
@@ -102,6 +104,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
               📦 Wholesale
             </button>
           </div>
+          */}
 
           {/* MUTUAL EXCLUSIVITY:
               1. If logged in as resident user: DO NOT show Society Portal button!
@@ -133,10 +136,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
               </Link>
               <button
                 type="button"
-                onClick={() => {
-                  logoutPartner();
-                  navigate('/');
-                }}
+                onClick={() => requestLogout('PARTNER')}
                 className="partner-quick-logout-btn"
                 title="Logout from Partner Desk"
               >
@@ -226,8 +226,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
                     className="user-menu-logout-btn"
                     onClick={() => {
                       setIsUserMenuOpen(false);
-                      logoutUser();
-                      navigate('/');
+                      requestLogout('USER');
                     }}
                   >
                     <LogOut size={15} />

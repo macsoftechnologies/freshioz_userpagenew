@@ -49,8 +49,8 @@ export default function AppFooter() {
               <Package size={20} color="#234B3C" />
             </div>
             <div>
-              <div className="pillar-title">Wholesale Crate Rates</div>
-              <div className="pillar-desc">Bulk 20kg crates for hostel messes & group buying</div>
+              <div className="pillar-title">Volume Bulk Discounts</div>
+              <div className="pillar-desc">Extra percentage savings on 5kg & 10kg volume buying</div>
             </div>
           </div>
         </div>

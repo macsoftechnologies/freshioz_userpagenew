@@ -15,6 +15,10 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
   // Dynamically pulled from Master Data catalog categories
   const categories = [
     { id: 'ALL', label: 'All Items 🌱' },
@@ -51,7 +55,11 @@ export default function CatalogPage() {
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.desc && p.desc.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (p.kannadaName && p.kannadaName.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCat && matchesSearch;
+    
+    // When Wholesale Mode is active, strictly show only items available in bulk crates/sacks
+    const matchesWholesale = !isWholesale || (p.hasWholesale !== false && Boolean(p.wholesaleUnit));
+
+    return matchesCat && matchesSearch && matchesWholesale;
   });
 
   return (
@@ -77,7 +85,7 @@ export default function CatalogPage() {
             </p>
           </div>
 
-          {/* Wholesale vs Retail Toggle */}
+          {/* Wholesale vs Retail Toggle - Commented out for retail concentration
           <div className="wholesale-switch-pill">
             <button
               type="button"
@@ -94,6 +102,7 @@ export default function CatalogPage() {
               📦 Wholesale Crates
             </button>
           </div>
+          */}
         </div>
 
         {/* Search Bar Input */}

@@ -9,6 +9,7 @@ import MobileDrawer from './components/layout/MobileDrawer';
 import SlideOverCart from './components/cart/SlideOverCart';
 import AuthModal from './components/auth/AuthModal';
 import SocietyRequestModal from './components/society/SocietyRequestModal';
+import LogoutConfirmModal from './components/auth/LogoutConfirmModal';
 
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
@@ -20,10 +21,22 @@ import UserProfilePage from './pages/UserProfilePage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import ScrollToTop from './components/common/ScrollToTop';
 import BotanicalWatermarkBackdrop from './components/common/BotanicalWatermarkBackdrop';
+import PwaInstallBanner from './components/common/PwaInstallBanner';
 
 export default function App() {
   const navigate = useNavigate();
   const [globalSearch, setGlobalSearch] = useState('');
+  const [syncError, setSyncError] = useState(null);
+
+  React.useEffect(() => {
+    const handleSyncError = (e) => {
+      setSyncError(e.detail || 'Database synchronization rejected.');
+      const t = setTimeout(() => setSyncError(null), 7000);
+      return () => clearTimeout(t);
+    };
+    window.addEventListener('freshioz_sync_error', handleSyncError);
+    return () => window.removeEventListener('freshioz_sync_error', handleSyncError);
+  }, []);
 
   const handleMobileSearchClick = () => {
     navigate('/catalog');
@@ -31,6 +44,30 @@ export default function App() {
 
   return (
     <div className="freshioz-app">
+      {syncError && (
+        <div style={{
+          position: 'fixed',
+          top: '16px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 999999,
+          background: '#FEF2F2',
+          border: '1.5px solid #F87171',
+          color: '#991B1B',
+          padding: '10px 20px',
+          borderRadius: '10px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          fontSize: '13px',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span>⚠️ {syncError}</span>
+          <button onClick={() => setSyncError(null)} style={{ background: 'transparent', border: 'none', color: '#991B1B', cursor: 'pointer', fontWeight: 800 }}>✕</button>
+        </div>
+      )}
+
       {/* Subtle Luxury Botanical Line-Art Watermark Layer (3.5% opacity, zero-lag parallax) */}
       <BotanicalWatermarkBackdrop />
 
@@ -46,8 +83,11 @@ export default function App() {
         onSearchChange={setGlobalSearch}
       />
 
-      {/* Mobile Top Header */}
-      <MobileHeader onSearchClick={handleMobileSearchClick} />
+      {/* Mobile & Tablet Top Header */}
+      <MobileHeader 
+        searchQuery={globalSearch}
+        onSearchChange={setGlobalSearch}
+      />
 
       {/* Main Routed Page Content */}
       <main className="main-content">
@@ -55,6 +95,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
+          {/* Dedicated Institutional & Bulk Wholesale Crates Page */}
           <Route path="/wholesale" element={<WholesalePage />} />
           <Route path="/society-portal" element={<SocietyPartnerPortalPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
@@ -75,11 +116,17 @@ export default function App() {
       {/* Society Request Modal with Leaflet Map */}
       <SocietyRequestModal />
 
+      {/* Logout Confirmation Dialog Modal */}
+      <LogoutConfirmModal />
+
       {/* Left Mobile Drawer */}
       <MobileDrawer />
 
       {/* Mobile Bottom Dock Bar */}
       <MobileBottomDock />
+
+      {/* PWA Home Screen Install Banner */}
+      <PwaInstallBanner />
     </div>
   );
 }

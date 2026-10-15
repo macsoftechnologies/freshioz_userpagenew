@@ -15,7 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { saveFreshiozStore } from '../shared/freshiozStore';
+import { saveFreshiozStore, generateId, generateUUID, API_BASE_URL } from '../shared/freshiozStore';
 import FreshiozLogo from '../components/common/FreshiozLogo';
 
 export default function SocietyPartnerPortalPage() {
@@ -26,14 +26,14 @@ export default function SocietyPartnerPortalPage() {
     loginPartner, 
     logoutPartner,
     activeUser,
-    logoutUser
+    requestLogout
   } = useStore();
 
   // Login Form States
-  const [selectedSocietyId, setSelectedSocietyId] = useState(approvedSocieties[0]?.id || 'soc-1');
-  const [headPhone, setHeadPhone] = useState('9876543210');
-  const [otp, setOtp] = useState(['1', '2', '3', '4']);
-  const [loginStep, setLoginStep] = useState('CREDENTIALS'); // 'CREDENTIALS' -> 'OTP'
+  const [selectedSocietyId, setSelectedSocietyId] = useState(approvedSocieties[0]?.id || '');
+  const [headPhone, setHeadPhone] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
 
   // Withdrawal Modal State
@@ -44,49 +44,56 @@ export default function SocietyPartnerPortalPage() {
 
   const currentSociety = store.societies.find(s => s.id === (partnerAuth?.societyId || selectedSocietyId)) || store.societies[0];
 
-  // Quick Demo Auto-fill
-  const handleAutoFillDemo = () => {
-    setSelectedSocietyId('soc-1');
-    setHeadPhone('9876543210');
-    setLoginError('');
-    setLoginStep('OTP');
-  };
-
-  const handleCredentialsSubmit = (e) => {
+  const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
+    if (!currentSociety) {
+      setLoginError('No approved community found. Please onboard and approve your society in the Admin portal first.');
+      return;
+    }
     const enteredDigits = headPhone.replace(/\D/g, '').slice(-10);
-    const registeredDigits = (currentSociety.secretaryPhone || '').replace(/\D/g, '').slice(-10);
 
     if (!enteredDigits) {
       setLoginError('Please enter the registered Secretary / Warden phone number.');
       return;
     }
 
-    if (enteredDigits !== registeredDigits) {
-      setLoginError(`Phone +91 ${headPhone} does not match the registered Secretary phone (+91 ******${registeredDigits.slice(-4)}) on file for ${currentSociety.name}.`);
+    if (!partnerPassword.trim()) {
+      setLoginError('Please enter your Association Partner portal password.');
       return;
     }
 
-    setLoginError('');
-    setLoginStep('OTP');
-  };
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/partner-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          societyId: currentSociety.id,
+          phone: enteredDigits,
+          password: partnerPassword.trim()
+        })
+      });
 
-  const handleOtpVerify = (e) => {
-    e.preventDefault();
-    const entered = otp.join('');
-    if (entered !== '1234') {
-      setLoginError('Invalid OTP. Use 1234 for testing.');
-      return;
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Authentication failed. Please verify credentials.');
+      }
+
+      if (data.token) {
+        localStorage.setItem('freshioz_partner_token', data.token);
+      }
+
+      setLoginError('');
+      const authPayload = {
+        societyId: currentSociety.id,
+        societyName: currentSociety.name,
+        secretaryName: currentSociety.secretaryName || 'Secretary / Warden',
+        phone: enteredDigits,
+        token: data.token
+      };
+      loginPartner(authPayload);
+    } catch (err) {
+      setLoginError(err.message || 'Incorrect credentials. Please verify your registered phone and password.');
     }
-
-    const authPayload = {
-      societyId: currentSociety.id,
-      societyName: currentSociety.name,
-      secretaryName: currentSociety.secretaryName,
-      phone: headPhone
-    };
-    loginPartner(authPayload);
-    setLoginStep('CREDENTIALS');
   };
 
   const handleLogout = () => {
@@ -94,7 +101,7 @@ export default function SocietyPartnerPortalPage() {
   };
 
   // Submit Withdrawal Request
-  const handleWithdrawSubmit = (e) => {
+  const handleWithdrawSubmit = async (e) => {
     e.preventDefault();
     const amt = Number(withdrawAmount);
     if (!amt || amt <= 0) {
@@ -106,39 +113,65 @@ export default function SocietyPartnerPortalPage() {
       return;
     }
 
-    const newWithdrawal = {
-      id: `WDR-${Date.now().toString().slice(-4)}`,
-      societyId: currentSociety.id,
-      societyName: currentSociety.name,
-      amount: amt,
-      bankDetails: `${currentSociety.bankDetails?.bankName} - A/C ...${currentSociety.bankDetails?.accountNumber?.slice(-4)} (IFSC: ${currentSociety.bankDetails?.ifscCode})`,
-      requestedAt: new Date().toISOString(),
-      status: 'PENDING_APPROVAL',
-      bankUtr: null,
-      disbursedAt: null
-    };
+    try {
+      const partnerToken = localStorage.getItem('freshioz_partner_token') || partnerAuth?.token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (partnerToken) {
+        headers['Authorization'] = `Bearer ${partnerToken}`;
+      }
 
-    saveFreshiozStore(prev => {
-      const updatedSocieties = prev.societies.map(s => {
-        if (s.id === currentSociety.id) {
-          return {
-            ...s,
-            balanceEarned: Number((s.balanceEarned - amt).toFixed(2))
-          };
-        }
-        return s;
+      const res = await fetch(`${API_BASE_URL}/societies/${currentSociety.id}/payout-request`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ amount: amt })
       });
 
-      return {
-        ...prev,
-        societies: updatedSocieties,
-        withdrawals: [newWithdrawal, ...(prev.withdrawals || [])]
-      };
-    });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || `Withdrawal request failed (${res.status})`);
+      }
 
-    setIsWithdrawModalOpen(false);
-    setWithdrawAmount('');
-    alert(`Withdrawal request of ₹${amt.toLocaleString()} submitted successfully! It has been deducted from your available balance and sent to Admin for bank transfer.`);
+      const serverPayout = await res.json();
+
+      const newWithdrawal = {
+        id: serverPayout.id || generateId('FRZ_WDR'),
+        uuid: serverPayout.uuid || generateUUID(),
+        societyId: currentSociety.id,
+        societyName: currentSociety.name,
+        amount: amt,
+        bankDetails: `${currentSociety.bankDetails?.bankName || 'HDFC Bank'} - A/C ...${(currentSociety.bankDetails?.accountNumber || '817291').slice(-4)} (IFSC: ${currentSociety.bankDetails?.ifscCode || 'HDFC0001742'})`,
+        requestedAt: serverPayout.createdAt || new Date().toISOString(),
+        status: 'PENDING_APPROVAL',
+        bankUtr: null,
+        disbursedAt: null
+      };
+
+      // Update local state and canonical storage, preserving all products and store collections
+      saveFreshiozStore(prev => {
+        const updatedSocieties = (prev.societies || []).map(s => {
+          if (s.id === currentSociety.id) {
+            return {
+              ...s,
+              balanceEarned: Number((s.balanceEarned - amt).toFixed(2))
+            };
+          }
+          return s;
+        });
+
+        return {
+          ...prev,
+          societies: updatedSocieties,
+          withdrawals: [newWithdrawal, ...(prev.withdrawals || [])]
+        };
+      });
+
+      setIsWithdrawModalOpen(false);
+      setWithdrawAmount('');
+      alert(`Withdrawal request of ₹${amt.toLocaleString()} submitted successfully! It has been deducted from your available balance and recorded in the database.`);
+    } catch (err) {
+      console.error('Withdrawal submission error:', err);
+      setWithdrawMsg(err.message || 'Failed to submit withdrawal request.');
+    }
   };
 
   // Society-specific ledger
@@ -260,7 +293,7 @@ export default function SocietyPartnerPortalPage() {
 
             <button
               type="button"
-              onClick={() => logoutUser()}
+              onClick={() => requestLogout('USER')}
               style={{
                 background: '#FFF1F2',
                 color: '#E11D48',
@@ -331,7 +364,6 @@ export default function SocietyPartnerPortalPage() {
             </div>
           )}
 
-          {loginStep === 'CREDENTIALS' ? (
             <form onSubmit={handleCredentialsSubmit}>
               {/* Select Apartment or Hostel */}
               <div className="form-group-field">
@@ -356,32 +388,33 @@ export default function SocietyPartnerPortalPage() {
                 <input
                   type="tel"
                   className="form-input-control"
-                  placeholder="Registered phone number"
+                  placeholder="Registered 10-digit mobile number"
                   value={headPhone}
                   onChange={(e) => setHeadPhone(e.target.value)}
                   required
                 />
               </div>
 
-              {/* Quick Auto Fill Button for Demo Testing */}
-              <div style={{ marginBottom: '18px' }}>
-                <button
-                  type="button"
-                  onClick={handleAutoFillDemo}
-                  style={{
-                    width: '100%',
-                    background: '#F0F4F2',
-                    border: '1px dashed #234B3C',
-                    color: '#234B3C',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  ⚡ One-Click Demo: Greenfield Heights Association
-                </button>
+              {/* Partner Portal Access Password */}
+              <div className="form-group-field">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label-title">Association Access Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ background: 'none', border: 'none', color: '#234B3C', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input-control"
+                  placeholder="Enter Association Password"
+                  value={partnerPassword}
+                  onChange={(e) => setPartnerPassword(e.target.value)}
+                  required
+                />
               </div>
 
               <button
@@ -397,74 +430,9 @@ export default function SocietyPartnerPortalPage() {
                   boxShadow: '0 4px 12px rgba(35, 75, 60, 0.25)'
                 }}
               >
-                Send 4-Digit OTP
+                Sign In to Association Partner Desk
               </button>
             </form>
-          ) : (
-            <form onSubmit={handleOtpVerify}>
-              <div style={{
-                background: '#EBF2EE',
-                borderRadius: '12px',
-                padding: '12px',
-                fontSize: '13px',
-                color: '#234B3C',
-                textAlign: 'center',
-                marginBottom: '16px'
-              }}>
-                ✨ Test OTP Active: <strong>1234</strong>
-              </div>
-
-              <div className="otp-box-row">
-                {otp.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    type="text"
-                    maxLength={1}
-                    className="otp-digit-input"
-                    value={digit}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, '');
-                      const newOtp = [...otp];
-                      newOtp[idx] = val;
-                      setOtp(newOtp);
-                    }}
-                  />
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => setLoginStep('CREDENTIALS')}
-                  style={{
-                    flex: 1,
-                    background: '#F0F4F2',
-                    color: '#52635A',
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    padding: '12px',
-                    borderRadius: '9999px'
-                  }}
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    flex: 2,
-                    background: '#F28E14',
-                    color: '#FFF',
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    padding: '12px',
-                    borderRadius: '9999px'
-                  }}
-                >
-                  Login to Partner Desk
-                </button>
-              </div>
-            </form>
-          )}
         </div>
       </div>
     );
@@ -909,7 +877,7 @@ export default function SocietyPartnerPortalPage() {
 
       {/* Withdrawal Request Modal */}
       {isWithdrawModalOpen && (
-        <div className="modal-backdrop-overlay" onClick={() => setIsWithdrawModalOpen(false)}>
+        <div className="modal-backdrop-overlay">
           <div className="modal-dialog-box" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
