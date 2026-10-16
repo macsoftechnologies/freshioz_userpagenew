@@ -27,7 +27,7 @@ export default function HomePage() {
     activeUser 
   } = useStore();
 
-  const dailySpecials = (store.products || []).slice(0, 8);
+  const dailySpecials = store.products || [];
   const wholesaleBestsellers = (store.products || []).filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);
 
   return (
