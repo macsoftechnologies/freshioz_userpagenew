@@ -104,6 +104,23 @@ export async function pushStoreToServer(_storeData) {
   return { success: true, clientOnly: true };
 }
 
+function areInventoriesEqual(invA = {}, invB = {}) {
+  if (invA === invB) return true;
+  if (!invA || !invB || typeof invA !== 'object' || typeof invB !== 'object') return false;
+  const whIdsA = Object.keys(invA);
+  const whIdsB = Object.keys(invB);
+  const allWhIds = new Set([...whIdsA, ...whIdsB]);
+  for (const whId of allWhIds) {
+    const mapA = invA[whId] || {};
+    const mapB = invB[whId] || {};
+    const allKeys = new Set([...Object.keys(mapA), ...Object.keys(mapB)]);
+    for (const k of allKeys) {
+      if (Number(mapA[k] || 0) !== Number(mapB[k] || 0)) return false;
+    }
+  }
+  return true;
+}
+
 export function areEntityCollectionsEqual(localData, serverData) {
   if (!localData || !serverData) return false;
   const collections = [
@@ -112,8 +129,36 @@ export function areEntityCollectionsEqual(localData, serverData) {
     'societyRequests', 'withdrawals'
   ];
   for (const key of collections) {
-    if (JSON.stringify(localData[key] || []) !== JSON.stringify(serverData[key] || [])) {
-      return false;
+    const localVal = localData[key];
+    const serverVal = serverData[key];
+
+    if (key === 'warehouseInventory') {
+      if (!areInventoriesEqual(localVal, serverVal)) return false;
+      continue;
+    }
+
+    const localArr = localVal || [];
+    const serverArr = serverVal || [];
+    if (!Array.isArray(localArr) || !Array.isArray(serverArr)) {
+      if (JSON.stringify(localArr) !== JSON.stringify(serverArr)) return false;
+      continue;
+    }
+
+    if (localArr.length !== serverArr.length) return false;
+
+    const localMap = new Map();
+    for (const item of localArr) {
+      if (item && item.id) localMap.set(String(item.id), item);
+    }
+
+    for (const s of serverArr) {
+      if (!s || !s.id) continue;
+      const l = localMap.get(String(s.id));
+      if (!l) return false;
+      if (l.status !== s.status || l.name !== s.name) return false;
+      if (key === 'products') {
+        if (l.retailPrice !== s.retailPrice) return false;
+      }
     }
   }
   return true;
