@@ -70,7 +70,7 @@ export default function AppFooter() {
           </div>
 
           <div className="footer-quick-contacts">
-            <a href="tel:+919845011000" className="footer-contact-pill">
+            <a href="tel:++91111111" className="footer-contact-pill">
               <Phone size={13} color="#78B159" />
               <span>+91XXXXXXXXX</span>
             </a>
