@@ -70,10 +70,10 @@ export default function AppFooter() {
           </div>
 
           <div className="footer-quick-contacts">
-            <a href="tel:++91111111" className="footer-contact-pill">
+            <span className="footer-contact-pill">
               <Phone size={13} color="#78B159" />
-              <span>+91XXXXXXXXX</span>
-            </a>
+              <span>+91 XXXXXXXXXX</span>
+            </span>
             <a href="mailto:support@freshioz.com" className="footer-contact-pill">
               <Mail size={13} color="#78B159" />
               <span>support@freshioz.com</span>
