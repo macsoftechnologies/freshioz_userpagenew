@@ -89,9 +89,6 @@ export default function ProductCard({ product, forceWholesale = null }) {
           </h4>
           
           <div className="card-sub-meta">
-            {product.kannadaName && (
-              <span className="card-regional-name">{product.kannadaName}</span>
-            )}
             <span className="card-unit-label">{displayUnit}</span>
           </div>
 

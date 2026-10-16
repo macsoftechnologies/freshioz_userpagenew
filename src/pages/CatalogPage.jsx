@@ -55,8 +55,7 @@ export default function CatalogPage() {
     const matchesCat = currentCat === 'ALL' || matchesProductCategory(p, currentCat, store.categories);
     const matchesSearch = !searchQuery || 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.desc && p.desc.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.kannadaName && p.kannadaName.toLowerCase().includes(searchQuery.toLowerCase()));
+      (p.desc && p.desc.toLowerCase().includes(searchQuery.toLowerCase()));
     
     // When Wholesale Mode is active, strictly show only items available in bulk crates/sacks
     const matchesWholesale = !isWholesale || (p.hasWholesale !== false && Boolean(p.wholesaleUnit));

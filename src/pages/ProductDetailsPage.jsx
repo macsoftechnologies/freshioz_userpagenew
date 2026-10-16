@@ -191,9 +191,6 @@ export default function ProductDetailsPage() {
             <div className="product-title-section">
               <span className="category-pill-tag">{product.category}</span>
               <h1 className="product-main-heading">{product.name}</h1>
-              {product.kannadaName && (
-                <div className="product-regional-heading">{product.kannadaName}</div>
-              )}
             </div>
 
             <p className="product-description-text">
