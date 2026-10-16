@@ -1,5 +1,5 @@
 // Freshioz Progressive Web App Service Worker
-const CACHE_NAME = 'freshioz-pwa-v3';
+const CACHE_NAME = 'freshioz-pwa-v4';
 const CORE_ASSETS = [
   '/',
   '/index.html',

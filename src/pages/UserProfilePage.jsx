@@ -19,7 +19,7 @@ import { saveFreshiozStore } from '../shared/freshiozStore';
 import { orderService } from '../services/orderService';
 
 export default function UserProfilePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'orders'; // 'orders' | 'history' | 'profile'
 
   const { 
