@@ -63,10 +63,14 @@ export default function ProductCard({ product, forceWholesale = null }) {
       {/* Media Wrap with 100% Non-overlapping Floating Badge */}
       <div className="card-media-wrap">
         <img 
-          src={product.image} 
+          src={product.image || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600'} 
           alt={product.name} 
           className="card-img"
           loading="lazy" 
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600';
+          }}
         />
         
         {badgeLabel && (

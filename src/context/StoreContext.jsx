@@ -11,8 +11,12 @@ export function StoreProvider({ children }) {
     const handleSync = (e) => {
       setStore(e.detail || getFreshiozStore());
     };
-    window.addEventListener('freshioz_store_updated', handleSync);
-    window.addEventListener('storage', () => setStore(getFreshiozStore()));
+    const handleStorage = (e) => {
+      if (!e.key || e.key === 'freshioz_shopper_store_v1') {
+        setStore(getFreshiozStore());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
 
     // Initial sync from shared server file
     syncFreshiozStoreFromServer();
@@ -35,6 +39,7 @@ export function StoreProvider({ children }) {
 
     return () => {
       window.removeEventListener('freshioz_store_updated', handleSync);
+      window.removeEventListener('storage', handleStorage);
       window.removeEventListener('focus', handleFocus);
       clearInterval(interval);
     };

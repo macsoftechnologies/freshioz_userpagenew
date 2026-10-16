@@ -33,8 +33,10 @@ export {
   DEFAULT_STORE
 };
 
-const STORAGE_KEY = 'freshioz_master_store_clean_v6';
+// Isolated Customer / Shopper Storage Key (isolated from Admin Ops Desk)
+const STORAGE_KEY = 'freshioz_shopper_store_v1';
 const LEGACY_STORAGE_KEYS = [
+  'freshioz_master_store_clean_v6',
   'freshioz_master_store_clean_v5',
   'freshioz_master_store_clean_v4',
   'freshioz_master_store_clean_v3',
