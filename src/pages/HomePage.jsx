@@ -14,7 +14,6 @@ import {
 import { useStore } from '../context/StoreContext';
 import ProductCard from '../components/product/ProductCard';
 import ModernizedVanTransitHero from '../components/common/ModernizedVanTransitHero';
-import { matchesProductCategory } from '../shared/freshiozStore';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -28,23 +27,7 @@ export default function HomePage() {
     activeUser 
   } = useStore();
 
-  const [activeCategory, setActiveCategory] = useState('ALL');
-  
-  // Dynamically pulled from Master Data catalog categories
-  const categories = [
-    { id: 'ALL', label: 'All Items', icon: '🌱' },
-    ...(store.categories || []).filter(c => c.status !== 'INACTIVE').map(cat => ({
-      id: cat.id,
-      label: cat.name || cat.label,
-      icon: cat.icon || '🥬'
-    }))
-  ];
-
-  const filteredProducts = activeCategory === 'ALL'
-    ? (store.products || [])
-    : (store.products || []).filter(p => matchesProductCategory(p, activeCategory, store.categories));
-
-  const dailySpecials = filteredProducts.slice(0, 8);
+  const dailySpecials = (store.products || []).slice(0, 8);
   const wholesaleBestsellers = (store.products || []).filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);
 
   return (
@@ -187,43 +170,6 @@ export default function HomePage() {
               */}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Category Pills Strip */}
-      <section className="section-container" style={{ margin: '16px auto 8px' }}>
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          overflowX: 'auto',
-          paddingBottom: '8px',
-          scrollbarWidth: 'none'
-        }}>
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setActiveCategory(cat.id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: '9999px',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease',
-                background: activeCategory === cat.id ? '#234B3C' : '#FFFFFF',
-                color: activeCategory === cat.id ? '#FFFFFF' : '#52635A',
-                border: activeCategory === cat.id ? '1.5px solid #234B3C' : '1.5px solid #E5ECE7',
-                boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(35, 75, 60, 0.2)' : 'none'
-              }}
-            >
-              <span>{cat.icon}</span>
-              <span>{cat.label}</span>
-            </button>
-          ))}
         </div>
       </section>
 
