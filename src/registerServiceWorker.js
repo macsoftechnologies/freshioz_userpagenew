@@ -1,48 +1,21 @@
-// Service Worker Registration for Freshioz PWA
+// Service Worker Unregistration & Cache Buster for Freshioz
+// Ensures clients always receive 100% live code without being trapped by stale service worker caches
 export function registerServiceWorker() {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-    // Proactively purge old caches
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister().then(() => {
+          console.log('[PWA] Unregistered legacy worker:', registration.scope);
+        });
+      }
+    });
+
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'freshioz-pwa-v7') {
-            caches.delete(key);
-          }
+          caches.delete(key);
         });
       });
     }
-
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          // Force update check
-          registration.update();
-
-          registration.onupdatefound = () => {
-            const installingWorker = registration.installing;
-            if (installingWorker == null) return;
-            installingWorker.onstatechange = () => {
-              if (installingWorker.state === 'installed') {
-                if (navigator.serviceWorker.controller) {
-                  installingWorker.postMessage({ type: 'SKIP_WAITING' });
-                  window.location.reload();
-                }
-              }
-            };
-          };
-        })
-        .catch((error) => {
-          console.warn('[PWA] Service Worker registration failed:', error);
-        });
-
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
-      });
-    });
   }
 }
