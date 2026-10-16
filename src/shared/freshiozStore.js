@@ -33,10 +33,24 @@ export {
   DEFAULT_STORE
 };
 
-const STORAGE_KEY = 'freshioz_master_store_clean_v4';
+const STORAGE_KEY = 'freshioz_master_store_clean_v6';
+const LEGACY_STORAGE_KEYS = [
+  'freshioz_master_store_clean_v5',
+  'freshioz_master_store_clean_v4',
+  'freshioz_master_store_clean_v3',
+  'freshioz_master_store_clean_v2',
+  'freshioz_master_store_clean_v1',
+  'freshioz_master_store'
+];
 
 export function getFreshiozStore() {
   try {
+    if (typeof localStorage !== 'undefined') {
+      LEGACY_STORAGE_KEYS.forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       const initial = { ...DEFAULT_STORE };
@@ -190,9 +204,7 @@ export async function syncFreshiozStoreFromServer() {
       const serverData = await res.json();
       if (serverData && typeof serverData === 'object' && Array.isArray(serverData.categories)) {
         const currentLocal = getFreshiozStore();
-        const mergedOrders = (Array.isArray(serverData.orders) && serverData.orders.length > 0)
-          ? serverData.orders
-          : (currentLocal.orders || []);
+        const mergedOrders = Array.isArray(serverData.orders) ? serverData.orders : [];
 
         const mergedData = {
           ...serverData,
