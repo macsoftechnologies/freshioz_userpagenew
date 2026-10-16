@@ -69,7 +69,7 @@ export default function AppFooter() {
             </span>
           </div>
 
-          <div className="footer-quick-contacts">
+          {/* <div className="footer-quick-contacts">
             <span className="footer-contact-pill">
               <Phone size={13} color="#78B159" />
               <span>+91 XXXXXXXXXX</span>
@@ -78,7 +78,7 @@ export default function AppFooter() {
               <Mail size={13} color="#78B159" />
               <span>support@freshioz.com</span>
             </a>
-          </div>
+          </div> */}
         </div>
       </div>
 
