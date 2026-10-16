@@ -14,6 +14,7 @@ import {
 import { useStore } from '../context/StoreContext';
 import ProductCard from '../components/product/ProductCard';
 import ModernizedVanTransitHero from '../components/common/ModernizedVanTransitHero';
+import { matchesProductCategory } from '../shared/freshiozStore';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ export default function HomePage() {
 
   const filteredProducts = activeCategory === 'ALL'
     ? (store.products || [])
-    : (store.products || []).filter(p => p.category === activeCategory);
+    : (store.products || []).filter(p => matchesProductCategory(p, activeCategory, store.categories));
 
   const dailySpecials = filteredProducts.slice(0, 8);
   const wholesaleBestsellers = (store.products || []).filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);

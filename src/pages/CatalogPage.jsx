@@ -5,6 +5,8 @@ import { useStore } from '../context/StoreContext';
 import ProductCard from '../components/product/ProductCard';
 import FreshProduceLoader from '../components/common/FreshProduceLoader';
 
+import { matchesProductCategory } from '../shared/freshiozStore';
+
 export default function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { store, isWholesale, setIsWholesale } = useStore();
@@ -49,8 +51,8 @@ export default function CatalogPage() {
     });
   };
 
-  const filteredProducts = store.products.filter(p => {
-    const matchesCat = currentCat === 'ALL' || p.category === currentCat;
+  const filteredProducts = (store.products || []).filter(p => {
+    const matchesCat = currentCat === 'ALL' || matchesProductCategory(p, currentCat, store.categories);
     const matchesSearch = !searchQuery || 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.desc && p.desc.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -62,23 +64,29 @@ export default function CatalogPage() {
     return matchesCat && matchesSearch && matchesWholesale;
   });
 
+  const activeCategoryObj = categories.find(c => 
+    c.id === currentCat || 
+    c.id?.toLowerCase() === currentCat?.toLowerCase() ||
+    c.label?.toLowerCase().includes(currentCat?.toLowerCase())
+  );
+
   return (
-    <div className="section-container">
+    <div className="section-container" style={{ marginTop: '6px' }}>
       {/* Top Filter & Search Header */}
       <div style={{
         background: '#FFFFFF',
         border: '1.5px solid #E5ECE7',
         borderRadius: '14px',
-        padding: '14px 18px',
-        marginBottom: '16px',
+        padding: '12px 18px',
+        marginBottom: '14px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '10px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h1 style={{ fontSize: '20px', color: '#234B3C', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
-              {currentCat === 'ALL' ? 'Complete Fresh Harvest' : categories.find(c => c.id === currentCat)?.label}
+              {currentCat === 'ALL' ? 'Complete Fresh Harvest' : (activeCategoryObj?.label || currentCat)}
             </h1>
             <p style={{ fontSize: '12.5px', color: '#52635A', marginTop: '3px', margin: 0 }}>
               Showing {filteredProducts.length} farm-direct products for next-day society fulfillment
@@ -123,26 +131,29 @@ export default function CatalogPage() {
           scrollbarWidth: 'none',
           paddingBottom: '2px'
         }}>
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => handleCategorySelect(cat.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '9999px',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                background: currentCat === cat.id ? '#234B3C' : '#F2F5F3',
-                color: currentCat === cat.id ? '#FFFFFF' : '#52635A',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              {cat.label}
-            </button>
-          ))}
+          {categories.map(cat => {
+            const isSelected = currentCat === cat.id || currentCat?.toLowerCase() === cat.id?.toLowerCase();
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleCategorySelect(cat.id)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  background: isSelected ? '#234B3C' : '#F2F5F3',
+                  color: isSelected ? '#FFFFFF' : '#52635A',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
