@@ -64,7 +64,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
         {/* Left: Brand Logo (Prominent & Glossy) */}
         <div className="desktop-header-left">
           <Link to="/" className="desktop-logo-link" title="Freshioz - Home">
-            <FreshiozLogo height={46} />
+            <FreshiozLogo height={65} />
           </Link>
         </div>
 
