@@ -1,15 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Building2, 
-  Leaf, 
-  Clock, 
-  ShieldCheck, 
-  Truck, 
-  Coins, 
-  Phone, 
-  Mail, 
-  MapPin, 
+import {
+  Building2,
+  Leaf,
+  Clock,
+  ShieldCheck,
+  Truck,
+  Coins,
+  Phone,
+  Mail,
+  MapPin,
   ArrowRight,
   Package
 } from 'lucide-react';
@@ -72,7 +72,7 @@ export default function AppFooter() {
           <div className="footer-quick-contacts">
             <a href="tel:+919845011000" className="footer-contact-pill">
               <Phone size={13} color="#78B159" />
-              <span>+91 98450 11000</span>
+              <span>+91XXXXXXXXX</span>
             </a>
             <a href="mailto:support@freshioz.com" className="footer-contact-pill">
               <Mail size={13} color="#78B159" />
