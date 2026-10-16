@@ -1,11 +1,23 @@
 // Service Worker Registration for Freshioz PWA
 export function registerServiceWorker() {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    // Proactively purge old caches
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => {
+          if (key !== 'freshioz-pwa-v7') {
+            caches.delete(key);
+          }
+        });
+      });
+    }
+
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('[PWA] Service Worker registered with scope:', registration.scope);
+          // Force update check
+          registration.update();
 
           registration.onupdatefound = () => {
             const installingWorker = registration.installing;
@@ -13,9 +25,8 @@ export function registerServiceWorker() {
             installingWorker.onstatechange = () => {
               if (installingWorker.state === 'installed') {
                 if (navigator.serviceWorker.controller) {
-                  console.log('[PWA] New content is available; please refresh.');
-                } else {
-                  console.log('[PWA] Content is cached for offline use.');
+                  installingWorker.postMessage({ type: 'SKIP_WAITING' });
+                  window.location.reload();
                 }
               }
             };
@@ -24,6 +35,14 @@ export function registerServiceWorker() {
         .catch((error) => {
           console.warn('[PWA] Service Worker registration failed:', error);
         });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     });
   }
 }

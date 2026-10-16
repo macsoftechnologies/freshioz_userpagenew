@@ -1,5 +1,5 @@
 // Freshioz Progressive Web App Service Worker
-const CACHE_NAME = 'freshioz-pwa-v4';
+const CACHE_NAME = 'freshioz-pwa-v7';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -22,13 +22,14 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: Clean up older cache versions
+// Activate: Clean up older cache versions immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[PWA] Deleting outdated cache:', key);
             return caches.delete(key);
           }
         })
@@ -37,12 +38,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Strategy for offline capability & fast loading
+// Fetch: Strategy for offline capability & instant live updates
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
   // 1. Strictly bypass non-GET requests (POST, PUT, DELETE, PATCH, etc.)
-  // Never intercept data synchronization or API submissions
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
@@ -57,22 +57,33 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Navigation requests: Network first, fall back to cached shell
-  if (req.mode === 'navigate') {
+  // 3. Navigation, HTML, Scripts & Styles: Network First (always fresh code when online)
+  if (
+    req.mode === 'navigate' ||
+    url.pathname.match(/\.(js|css|html)$/i)
+  ) {
     event.respondWith(
-      fetch(req).catch(async () => {
-        const cached = (await caches.match(req)) || 
-                       (await caches.match('/index.html')) || 
-                       (await caches.match('/'));
-        return cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
-      })
+      fetch(req)
+        .then((networkRes) => {
+          if (networkRes && networkRes.status === 200) {
+            const clone = networkRes.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return networkRes;
+        })
+        .catch(async () => {
+          const cached = (await caches.match(req)) || 
+                         (await caches.match('/index.html')) || 
+                         (await caches.match('/'));
+          return cached || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        })
     );
     return;
   }
 
-  // 4. Static assets (images, scripts, styles): Stale-while-revalidate
+  // 4. Static media (images, fonts): Stale-while-revalidate for fast rendering
   if (
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|webp|woff2?|ico)$/i) ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|woff2?|ico)$/i) ||
     url.origin === 'https://fonts.googleapis.com' ||
     url.origin === 'https://fonts.gstatic.com'
   ) {
