@@ -8,7 +8,7 @@ export default function WholesalePage() {
   const { store } = useStore();
 
   return (
-    <div className="section-container" style={{ paddingTop: '16px' }}>
+    <div className="section-container">
       {/* Modernized Freshioz Bulk Reefer Truck Hero Animation (< 1024px) */}
       <ModernizedVanTransitHero 
         mode="wholesale" 

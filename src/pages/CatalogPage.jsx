@@ -63,56 +63,37 @@ export default function CatalogPage() {
   });
 
   return (
-    <div className="section-container" style={{ paddingTop: '16px' }}>
+    <div className="section-container">
       {/* Top Filter & Search Header */}
       <div style={{
         background: '#FFFFFF',
         border: '1.5px solid #E5ECE7',
-        borderRadius: '18px',
-        padding: '20px',
-        marginBottom: '24px',
+        borderRadius: '14px',
+        padding: '14px 18px',
+        marginBottom: '16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px'
+        gap: '12px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <h1 style={{ fontSize: '24px', color: '#234B3C' }}>
+            <h1 style={{ fontSize: '20px', color: '#234B3C', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
               {currentCat === 'ALL' ? 'Complete Fresh Harvest' : categories.find(c => c.id === currentCat)?.label}
             </h1>
-            <p style={{ fontSize: '13px', color: '#52635A', marginTop: '2px' }}>
+            <p style={{ fontSize: '12.5px', color: '#52635A', marginTop: '3px', margin: 0 }}>
               Showing {filteredProducts.length} farm-direct products for next-day society fulfillment
             </p>
           </div>
-
-          {/* Wholesale vs Retail Toggle - Commented out for retail concentration
-          <div className="wholesale-switch-pill">
-            <button
-              type="button"
-              className={`switch-btn ${!isWholesale ? 'active' : ''}`}
-              onClick={() => setIsWholesale(false)}
-            >
-              Retail Packs
-            </button>
-            <button
-              type="button"
-              className={`switch-btn ${isWholesale ? 'wholesale-active' : ''}`}
-              onClick={() => setIsWholesale(true)}
-            >
-              📦 Wholesale Crates
-            </button>
-          </div>
-          */}
         </div>
 
         {/* Search Bar Input */}
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px' }}>
+        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '8px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={18} color="#83968D" style={{ position: 'absolute', left: '14px', top: '13px' }} />
+            <Search size={16} color="#83968D" style={{ position: 'absolute', left: '13px', top: '12px' }} />
             <input
               type="text"
               className="form-input-control"
-              style={{ paddingLeft: '42px', height: '44px', borderRadius: '9999px' }}
+              style={{ paddingLeft: '38px', height: '40px', borderRadius: '9999px', fontSize: '13px' }}
               placeholder="Filter by name (e.g. Tomato, Spinach, Onion, Apple)..."
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
@@ -124,9 +105,10 @@ export default function CatalogPage() {
               background: '#234B3C',
               color: '#FFF',
               fontWeight: 700,
-              fontSize: '13.5px',
-              padding: '0 20px',
-              borderRadius: '9999px'
+              fontSize: '13px',
+              padding: '0 18px',
+              borderRadius: '9999px',
+              height: '40px'
             }}
           >
             Search
@@ -136,10 +118,10 @@ export default function CatalogPage() {
         {/* Category Pills */}
         <div style={{
           display: 'flex',
-          gap: '8px',
+          gap: '6px',
           overflowX: 'auto',
           scrollbarWidth: 'none',
-          paddingBottom: '4px'
+          paddingBottom: '2px'
         }}>
           {categories.map(cat => (
             <button
@@ -147,9 +129,9 @@ export default function CatalogPage() {
               type="button"
               onClick={() => handleCategorySelect(cat.id)}
               style={{
-                padding: '7px 16px',
+                padding: '6px 14px',
                 borderRadius: '9999px',
-                fontSize: '13px',
+                fontSize: '12.5px',
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
                 background: currentCat === cat.id ? '#234B3C' : '#F2F5F3',
