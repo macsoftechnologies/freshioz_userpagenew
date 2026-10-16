@@ -46,7 +46,10 @@ export default function UserProfilePage() {
   useEffect(() => {
     let isMounted = true;
     async function fetchLiveOrders() {
-      if (!activeUser?.phone) return;
+      if (!activeUser?.phone) {
+        setApiOrders([]);
+        return;
+      }
       setIsLoadingOrders(true);
       try {
         const res = await orderService.getAll({ phone: activeUser.phone });

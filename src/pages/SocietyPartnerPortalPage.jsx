@@ -97,7 +97,7 @@ export default function SocietyPartnerPortalPage() {
   };
 
   const handleLogout = () => {
-    logoutPartner();
+    logoutPartner(true);
   };
 
   // Submit Withdrawal Request

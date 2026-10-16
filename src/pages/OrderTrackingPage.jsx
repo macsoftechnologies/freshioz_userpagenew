@@ -19,19 +19,23 @@ export default function OrderTrackingPage() {
   const [liveServerOrder, setLiveServerOrder] = useState(null);
   const [_isLoadingLive, setIsLoadingLive] = useState(false);
 
-  // Secure order lookup: strictly match requested orderId or current user's latest order
+  // Secure order lookup: strictly match requested orderId for current user
   const userOrders = (store?.orders || []).filter(o => {
     if (!activeUser) return false;
     return o.userPhone === activeUser.phone || o.userId === activeUser.id;
   });
 
-  const currentLocalOrder = (store?.orders || []).find(o => o.id === orderId || o.uuid === orderId) 
+  const currentLocalOrder = userOrders.find(o => o.id === orderId || o.uuid === orderId) 
     || userOrders[0] 
     || null;
 
   useEffect(() => {
     let isMounted = true;
     async function fetchLiveTracking() {
+      if (!activeUser) {
+        setLiveServerOrder(null);
+        return;
+      }
       const targetId = orderId || currentLocalOrder?.id || currentLocalOrder?.uuid;
       if (!targetId) return;
       setIsLoadingLive(true);
@@ -48,7 +52,24 @@ export default function OrderTrackingPage() {
     }
     fetchLiveTracking();
     return () => { isMounted = false; };
-  }, [orderId, currentLocalOrder?.id, currentLocalOrder?.uuid]);
+  }, [activeUser?.phone, activeUser?.id, orderId, currentLocalOrder?.id, currentLocalOrder?.uuid]);
+
+  if (!activeUser) {
+    return (
+      <div className="section-container" style={{ paddingTop: '40px', maxWidth: '700px', textAlign: 'center' }}>
+        <div style={{ background: '#FFFFFF', padding: '48px 24px', borderRadius: '16px', border: '1.5px solid #E5ECE7', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+          <Clock size={48} color="#234B3C" style={{ margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: '22px', color: '#234B3C', marginBottom: '8px', fontWeight: 800 }}>Please Log In</h2>
+          <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '24px' }}>
+            Please log in with your registered phone number to track your active orders and harvest deliveries.
+          </p>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '8px', background: '#234B3C', color: '#FFF', textDecoration: 'none', fontWeight: 700, fontSize: '13.5px' }}>
+            <ArrowLeft size={16} /> Back to Daily Harvest
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Combine local cached order details (e.g. line items) with live backend tracking milestones
   const currentOrder = liveServerOrder 

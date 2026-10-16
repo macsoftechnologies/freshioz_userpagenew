@@ -298,10 +298,25 @@ export function StoreProvider({ children }) {
     window.dispatchEvent(new CustomEvent('freshioz_active_user_updated', { detail: userData }));
   };
 
-  const logoutUser = () => {
+  const logoutUser = (redirectToHome = false) => {
     setActiveUser(null);
+    setCart([]);
     localStorage.removeItem('freshioz_active_user');
+    localStorage.removeItem('freshioz_user_token');
+    localStorage.removeItem('freshioz_auth_token');
+    localStorage.removeItem('freshioz_cart');
+
+    // Wipe cached order records from store so no previous user order data lingers
+    saveFreshiozStore(prev => ({
+      ...prev,
+      orders: []
+    }), { skipPush: true });
+
     window.dispatchEvent(new CustomEvent('freshioz_active_user_updated', { detail: null }));
+
+    if (redirectToHome && typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -313,12 +328,12 @@ export function StoreProvider({ children }) {
   };
 
   const confirmLogout = () => {
-    if (logoutTarget === 'PARTNER') {
-      logoutPartner();
-    } else {
-      logoutUser();
-    }
     setIsLogoutModalOpen(false);
+    if (logoutTarget === 'PARTNER') {
+      logoutPartner(true);
+    } else {
+      logoutUser(true);
+    }
   };
 
   const loginPartner = (partnerData) => {
@@ -335,10 +350,15 @@ export function StoreProvider({ children }) {
     window.dispatchEvent(new CustomEvent('freshioz_partner_auth_updated', { detail: partnerData }));
   };
 
-  const logoutPartner = () => {
+  const logoutPartner = (redirectToHome = false) => {
     setPartnerAuth(null);
     localStorage.removeItem('freshioz_partner_auth');
+    localStorage.removeItem('freshioz_partner_token');
     window.dispatchEvent(new CustomEvent('freshioz_partner_auth_updated', { detail: null }));
+
+    if (redirectToHome && typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   // Place Order Flow
