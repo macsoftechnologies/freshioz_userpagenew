@@ -67,6 +67,11 @@ export function getFreshiozStore() {
       hasUpdates = true;
     }
 
+    if (!parsed.products || parsed.products.length === 0) {
+      parsed.products = INITIAL_PRODUCTS;
+      hasUpdates = true;
+    }
+
     if (!parsed.warehouseInventory) {
       parsed.warehouseInventory = INITIAL_WAREHOUSE_INVENTORY;
       hasUpdates = true;
