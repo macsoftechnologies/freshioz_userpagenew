@@ -9,14 +9,14 @@ export default function AnnouncementBar() {
     <div className="cutoff-announcement-bar">
       <div className="cutoff-badge-pill">
         <Clock size={10.5} />
-        <span>Cutoff: {cutoffInfo.cutoffTimeStr}</span>
+        <span>⏰ Daily Cutoff: {cutoffInfo.cutoffTimeStr}</span>
       </div>
       <div className="cutoff-text">
         {cutoffInfo.isPastCutoff ? (
-          <span>Next slot: <strong>{cutoffInfo.formattedDeliveryDate}</strong></span>
+          <span>🌙 Today's harvest packed! Next dawn drop: <strong>{cutoffInfo.formattedDeliveryDate}</strong></span>
         ) : (
           <span>
-            Order in <strong>{cutoffInfo.hoursRemaining}h {cutoffInfo.minutesRemaining}m</strong> for <strong>Tomorrow Morning</strong>
+            Order within <strong>{cutoffInfo.hoursRemaining}h {cutoffInfo.minutesRemaining}m</strong> for <strong>Tomorrow's Dawn Harvest 🌿</strong>
           </span>
         )}
       </div>

@@ -162,11 +162,11 @@ export default function CheckoutPage() {
             {cutoffInfo.isPastCutoff ? (
               <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '10px', padding: '10px 14px', fontSize: '12.5px', color: '#92400E', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertCircle size={16} />
-                <span>Today's 9:00 PM warehouse cut-off has passed. Your produce will be harvested for <strong>{cutoffInfo.formattedDeliveryDate}</strong>.</span>
+                <span>Today's {cutoffInfo.cutoffTimeStr} warehouse cut-off has passed. Your produce will be harvested for <strong>{cutoffInfo.formattedDeliveryDate}</strong>.</span>
               </div>
             ) : (
               <div style={{ background: '#EBF2EE', borderRadius: '10px', padding: '10px 14px', fontSize: '12.5px', color: '#234B3C', marginBottom: '14px' }}>
-                ✨ <strong>Next-Day Delivery:</strong> Arriving tomorrow morning ({cutoffInfo.formattedDeliveryDate}).
+                ✨ <strong>Next-Day Dawn Delivery:</strong> Arriving tomorrow morning ({cutoffInfo.formattedDeliveryDate}).
               </div>
             )}
 

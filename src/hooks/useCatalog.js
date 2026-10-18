@@ -10,8 +10,9 @@ export function useCatalog() {
   const q = useQuery({
     queryKey: ['catalog'],
     queryFn: () => apiClient('/catalog'),
-    staleTime: 15_000,
-    refetchInterval: 60_000,          // prices change daily; 60s is plenty and pauses in background tabs
+    staleTime: 5_000,
+    refetchInterval: 15_000,          // Auto-sync rates every 15s
+    refetchOnWindowFocus: true,       // Auto-refresh rates whenever user returns to website tab
     refetchIntervalInBackground: false,
   });
   const data = q.data || EMPTY;
