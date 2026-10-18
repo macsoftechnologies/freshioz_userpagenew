@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Minus, Sparkles, Package } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+import { resolveImageUrl, handleImageError } from '../../utils/imageUtils';
 
 export default function ProductCard({ product, forceWholesale = null }) {
   const navigate = useNavigate();
@@ -63,14 +64,11 @@ export default function ProductCard({ product, forceWholesale = null }) {
       {/* Media Wrap with 100% Non-overlapping Floating Badge */}
       <div className="card-media-wrap">
         <img 
-          src={product.image || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600'} 
+          src={resolveImageUrl(product.image)} 
           alt={product.name} 
           className="card-img"
           loading="lazy" 
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600';
-          }}
+          onError={handleImageError}
         />
         
         {badgeLabel && (
