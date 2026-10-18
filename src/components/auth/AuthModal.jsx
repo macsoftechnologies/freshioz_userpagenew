@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import FreshiozLogo from '../common/FreshiozLogo';
-import { API_BASE_URL } from '../../shared/freshiozStore';
+import { API_BASE_URL } from '../../api/client';
 
 export default function AuthModal() {
   const { 

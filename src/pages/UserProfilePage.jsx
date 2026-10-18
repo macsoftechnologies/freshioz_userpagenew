@@ -15,7 +15,6 @@ import {
   X
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { saveFreshiozStore } from '../shared/freshiozStore';
 import { orderService } from '../services/orderService';
 
 export default function UserProfilePage() {
@@ -55,19 +54,6 @@ export default function UserProfilePage() {
         const res = await orderService.getAll({ phone: activeUser.phone });
         if (isMounted && Array.isArray(res)) {
           setApiOrders(res);
-          // Sync into local store so offline cache and tabs have full orders
-          saveFreshiozStore(prev => {
-            const existing = prev.orders || [];
-            const otherOrders = existing.filter(o => 
-              o.userPhone !== activeUser.phone && 
-              o.userId !== activeUser.phone && 
-              o.userId !== activeUser.id
-            );
-            return {
-              ...prev,
-              orders: [...res, ...otherOrders]
-            };
-          }, { skipPush: true });
         }
       } catch (err) {
         console.warn('Live orders fetch note:', err?.message || err);
@@ -101,19 +87,6 @@ export default function UserProfilePage() {
         cancelledReason: cancelReason || 'Cancelled by resident before cutoff',
         cancelledAt: new Date().toISOString()
       } : o));
-
-      // Sync into local store
-      saveFreshiozStore(prev => ({
-        ...prev,
-        orders: (prev.orders || []).map(o => o.id === cancellingOrder.id ? {
-          ...o,
-          status: 'CANCELLED',
-          cancelledReason: cancelReason || 'Cancelled by resident before cutoff',
-          cancelledAt: new Date().toISOString(),
-          cancelledBy: activeUser?.name || 'Resident',
-          cancelledById: activeUser?.id || activeUser?.phone
-        } : o)
-      }), { skipPush: true });
 
       setCancelSuccessMsg(`Order #${cancellingOrder.id} successfully cancelled. 100% refund of ₹${cancellingOrder.totalAmount} will be returned to ${cancellingOrder.paymentMethod || 'UPI'}.`);
       setCancellingOrder(null);

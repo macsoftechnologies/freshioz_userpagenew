@@ -15,7 +15,8 @@ import {
   X
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { saveFreshiozStore, generateId, generateUUID, API_BASE_URL } from '../shared/freshiozStore';
+import { generateId, generateUUID } from '../utils/idGenerator';
+import { API_BASE_URL } from '../api/client';
 import FreshiozLogo from '../components/common/FreshiozLogo';
 
 export default function SocietyPartnerPortalPage() {
@@ -41,6 +42,7 @@ export default function SocietyPartnerPortalPage() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawMsg, setWithdrawMsg] = useState('');
   const [ledgerFilter, setLedgerFilter] = useState('ALL'); // 'ALL' | 'CREDITS' | 'DEBITS'
+  const [submittedWithdrawals, setSubmittedWithdrawals] = useState([]);
 
   const currentSociety = store.societies.find(s => s.id === (partnerAuth?.societyId || selectedSocietyId)) || store.societies[0];
 
@@ -146,24 +148,7 @@ export default function SocietyPartnerPortalPage() {
         disbursedAt: null
       };
 
-      // Update local state and canonical storage, preserving all products and store collections
-      saveFreshiozStore(prev => {
-        const updatedSocieties = (prev.societies || []).map(s => {
-          if (s.id === currentSociety.id) {
-            return {
-              ...s,
-              balanceEarned: Number((s.balanceEarned - amt).toFixed(2))
-            };
-          }
-          return s;
-        });
-
-        return {
-          ...prev,
-          societies: updatedSocieties,
-          withdrawals: [newWithdrawal, ...(prev.withdrawals || [])]
-        };
-      }, { skipPush: true });
+      setSubmittedWithdrawals(prev => [newWithdrawal, ...prev]);
 
       setIsWithdrawModalOpen(false);
       setWithdrawAmount('');
@@ -175,7 +160,7 @@ export default function SocietyPartnerPortalPage() {
   };
 
   // Society-specific ledger
-  const societyWithdrawals = (store.withdrawals || []).filter(w => w.societyId === currentSociety?.id);
+  const societyWithdrawals = [...submittedWithdrawals, ...(store.withdrawals || []).filter(w => w.societyId === currentSociety?.id)];
   const societyOrders = (store.orders || []).filter(o => o.societyId === currentSociety?.id);
 
   // Assemble Unified, Privacy-Safe Activity Stream (Delivered orders + Disbursals)

@@ -5,7 +5,7 @@ import { useStore } from '../context/StoreContext';
 import ProductCard from '../components/product/ProductCard';
 import FreshProduceLoader from '../components/common/FreshProduceLoader';
 
-import { matchesProductCategory } from '../shared/freshiozStore';
+import { matchesProductCategory } from '../utils/categoryMatcher';
 
 export default function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
