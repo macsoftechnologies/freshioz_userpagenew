@@ -88,7 +88,12 @@ export default function UserProfilePage() {
         cancelledAt: new Date().toISOString()
       } : o));
 
-      setCancelSuccessMsg(`Order #${cancellingOrder.id} successfully cancelled. 100% refund of ₹${cancellingOrder.totalAmount} will be returned to ${cancellingOrder.paymentMethod || 'UPI'}.`);
+      const isCod = cancellingOrder.paymentMethod === 'PAY_ON_DELIVERY' || cancellingOrder.paymentMethod === 'COD' || cancellingOrder.paymentStatus === 'PENDING_COD';
+      setCancelSuccessMsg(
+        isCod
+          ? `Order #${cancellingOrder.id} has been cancelled. Since this was a Pay-on-Delivery order, no payment was collected and no charges apply.`
+          : `Order #${cancellingOrder.id} has been successfully cancelled. No further charges will apply.`
+      );
       setCancellingOrder(null);
       setTimeout(() => setCancelSuccessMsg(''), 7000);
     } catch (err) {
@@ -694,7 +699,12 @@ export default function UserProfilePage() {
                         gap: '8px'
                       }}>
                         <AlertCircle size={15} color="#E53E3E" />
-                        <div>Reason: {order.cancelledReason} • 100% Refunded back to UPI</div>
+                        <div>
+                          <strong>Cancelled:</strong> {order.cancelledReason || 'Cancelled before cutoff'}
+                          {order.paymentMethod === 'PAY_ON_DELIVERY' || order.paymentMethod === 'COD' || order.paymentStatus === 'PENDING_COD'
+                            ? ' • No payment collected (Pay on Delivery)'
+                            : ''}
+                        </div>
                       </div>
                     )}
 
@@ -710,7 +720,11 @@ export default function UserProfilePage() {
                     }}>
                       <div>
                         <div style={{ fontSize: '18px', fontWeight: 800, color: '#15221B' }}>
-                          Total Paid: ₹{order.totalAmount}
+                          {order.status === 'CANCELLED' 
+                            ? `Order Value: ₹${order.totalAmount}`
+                            : (order.paymentMethod === 'PAY_ON_DELIVERY' || order.paymentStatus === 'PENDING_COD'
+                              ? `Pay on Delivery: ₹${order.totalAmount}`
+                              : `Total Paid: ₹${order.totalAmount}`)}
                         </div>
                       </div>
 
@@ -1282,7 +1296,9 @@ export default function UserProfilePage() {
                 Cancel Order #{cancellingOrder.id}?
               </h3>
               <p style={{ color: '#52635A', fontSize: '13px', margin: '6px 0 0' }}>
-                100% refund of <strong>₹{cancellingOrder.totalAmount}</strong> will be immediately initiated back to your {cancellingOrder.paymentMethod || 'UPI'}.
+                {cancellingOrder.paymentMethod === 'PAY_ON_DELIVERY' || cancellingOrder.paymentMethod === 'COD' || cancellingOrder.paymentStatus === 'PENDING_COD'
+                  ? 'Since this order is scheduled for Pay on Delivery, no payment was collected and your order will be cancelled immediately.'
+                  : 'Your order will be cancelled immediately and no further charges will apply.'}
               </p>
             </div>
 
@@ -1334,7 +1350,7 @@ export default function UserProfilePage() {
                     boxShadow: isCancelling ? 'none' : '0 4px 12px rgba(220, 38, 38, 0.25)' 
                   }}
                 >
-                  {isCancelling ? 'Cancelling on Server...' : 'Confirm Cancellation & Refund'}
+                  {isCancelling ? 'Cancelling on Server...' : 'Confirm Order Cancellation'}
                 </button>
               </div>
             </form>
