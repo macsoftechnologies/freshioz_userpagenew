@@ -1,49 +1,23 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getFreshiozStore, saveFreshiozStore, syncFreshiozStoreFromServer, generateId, generateUUID, API_BASE_URL } from '../shared/freshiozStore';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCatalog } from '../hooks/useCatalog';
+import { API_BASE_URL } from '../api/client';
 
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
-  const [store, setStore] = useState(() => getFreshiozStore());
+  const queryClient = useQueryClient();
+  const catalog = useCatalog();
 
-  // Listen for storage changes across tabs, different browsers, and server sync
-  useEffect(() => {
-    const handleSync = (e) => {
-      setStore(e.detail || getFreshiozStore());
-    };
-    const handleStorage = (e) => {
-      if (!e.key || e.key === 'freshioz_shopper_store_v1') {
-        setStore(getFreshiozStore());
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-
-    // Initial sync from shared server file
-    syncFreshiozStoreFromServer();
-
-    // Sync on window focus (throttled to at most once every 10s)
-    let lastFocusSync = 0;
-    const handleFocus = () => {
-      const now = Date.now();
-      if (now - lastFocusSync > 10000) {
-        lastFocusSync = now;
-        syncFreshiozStoreFromServer();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-
-    // Live polling (25s) for real-time mirroring across multiple tabs and devices without flickering
-    const interval = setInterval(() => {
-      syncFreshiozStoreFromServer();
-    }, 25000);
-
-    return () => {
-      window.removeEventListener('freshioz_store_updated', handleSync);
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
-    };
-  }, []);
+  const store = useMemo(() => ({
+    products: catalog.products || [],
+    categories: catalog.categories || [],
+    units: catalog.units || [],
+    societies: catalog.societies || [],
+    warehouses: catalog.warehouses || [],
+    deliveryConfig: catalog.deliveryConfig,
+    orders: [],
+  }), [catalog.products, catalog.categories, catalog.units, catalog.societies, catalog.warehouses, catalog.deliveryConfig]);
 
   // Current logged in user (stored locally)
   const [activeUser, setActiveUser] = useState(() => {
@@ -82,14 +56,25 @@ export function StoreProvider({ children }) {
   }, []);
 
   // Selected society: defaults to user's society or first approved society
-  const approvedSocieties = store.societies.filter(s => s.status === 'APPROVED');
+  const approvedSocieties = useMemo(
+    () => (store.societies || []).filter(s => s.status === 'APPROVED'),
+    [store.societies]
+  );
   const [selectedSocietyId, setSelectedSocietyId] = useState(() => {
     if (activeUser?.societyId) return activeUser.societyId;
     if (partnerAuth?.societyId) return partnerAuth.societyId;
-    return approvedSocieties[0]?.id || 'soc-1';
+    return null;
   });
 
-  const selectedSociety = store.societies.find(s => s.id === selectedSocietyId) || approvedSocieties[0];
+  useEffect(() => {
+    if (!selectedSocietyId && approvedSocieties.length > 0) {
+      setSelectedSocietyId(approvedSocieties[0].id);
+    }
+  }, [selectedSocietyId, approvedSocieties]);
+
+  const selectedSociety = useMemo(() => {
+    return (store.societies || []).find(s => s.id === selectedSocietyId) || approvedSocieties[0] || null;
+  }, [store.societies, selectedSocietyId, approvedSocieties]);
 
   // Wholesale Mode Switcher
   const [isWholesale, setIsWholesale] = useState(false);
@@ -311,11 +296,7 @@ export function StoreProvider({ children }) {
     localStorage.removeItem('freshioz_auth_token');
     localStorage.removeItem('freshioz_cart');
 
-    // Wipe cached order records from store so no previous user order data lingers
-    saveFreshiozStore(prev => ({
-      ...prev,
-      orders: []
-    }), { skipPush: true });
+    queryClient.clear();
 
     window.dispatchEvent(new CustomEvent('freshioz_active_user_updated', { detail: null }));
 
@@ -395,8 +376,12 @@ export function StoreProvider({ children }) {
       totalAmount: cartSubtotal + deliveryFee + cartGst,
       deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
       deliverySlot: deliverySlot || defaultSlotLabel,
-      paymentMethod: paymentMethod || 'UPI',
-      paymentStatus: paymentMethod === 'UPI' ? 'PAID' : 'PENDING_COD',
+      // Phase 1: Only Cash on Delivery (PAY_ON_DELIVERY) is permitted.
+      // Instant online UPI is commented out so nobody can submit or apply UPI orders from UI or console.
+      // paymentMethod: paymentMethod || 'UPI',
+      // paymentStatus: paymentMethod === 'UPI' ? 'PAID' : 'PENDING_COD',
+      paymentMethod: 'PAY_ON_DELIVERY',
+      paymentStatus: 'PENDING_COD',
       items: cart.map(i => {
         const pricing = getProductBulkPricing(i, i.qty);
         return {
@@ -449,25 +434,13 @@ export function StoreProvider({ children }) {
       items: serverOrder.items || payload.items
     };
 
-    saveFreshiozStore(prev => ({
-      ...prev,
-      orders: [confirmedOrder, ...(prev.orders || []).filter(o => o.id !== confirmedOrder.id)]
-    }), { skipPush: true });
-
+    queryClient.invalidateQueries({ queryKey: ['my-orders'] });
     clearCart();
     return confirmedOrder;
   };
 
   // Submit New Society Request
   const requestNewSociety = async (leadData) => {
-    const newLead = {
-      id: generateId('FRZ_REQ'),
-      uuid: generateUUID(),
-      ...leadData,
-      createdAt: new Date().toISOString(),
-      status: 'NEW_LEAD'
-    };
-
     try {
       const res = await fetch(`${API_BASE_URL}/inbound-requests`, {
         method: 'POST',
@@ -489,23 +462,8 @@ export function StoreProvider({ children }) {
       }
 
       const serverLead = await res.json();
-      if (serverLead?.id) newLead.id = serverLead.id;
-      if (serverLead?.uuid) newLead.uuid = serverLead.uuid;
-
-      // Only update state upon confirmed database persistence
-      setStore(prev => {
-        const updated = {
-          ...prev,
-          societyRequests: [newLead, ...(prev.societyRequests || [])]
-        };
-        try {
-          localStorage.setItem('freshioz_v2_central_store', JSON.stringify(updated));
-        } catch (err) {}
-        return updated;
-      });
-
       setIsSocietyRequestModalOpen(false);
-      return newLead;
+      return serverLead;
     } catch (e) {
       console.error('Error submitting inbound request to API:', e);
       throw e;

@@ -36,7 +36,9 @@ export default function CheckoutPage() {
   } = useStore();
 
   const [deliverySlot, setDeliverySlot] = useState(defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)');
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
+  // Phase 1: Default to PAY_ON_DELIVERY (Cash on Delivery). Instant UPI commented out for Phase 1.
+  // const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [paymentMethod, setPaymentMethod] = useState('PAY_ON_DELIVERY');
   const [isPlacing, setIsPlacing] = useState(false);
   const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
 
@@ -215,6 +217,7 @@ export default function CheckoutPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* --- PHASE 1 SUSPENSION: Instant Online UPI payment is commented out for Phase 1 (Cash on Delivery only) ---
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -229,7 +232,7 @@ export default function CheckoutPage() {
                   type="radio"
                   name="payment"
                   checked={paymentMethod === 'UPI'}
-                  onChange={() => setPaymentMethod('UPI')}
+                  onChange={() => setPaymentMethod('PAY_ON_DELIVERY')}
                   style={{ accentColor: '#234B3C' }}
                 />
                 <div>
@@ -237,15 +240,16 @@ export default function CheckoutPage() {
                   <div style={{ fontSize: '12px', color: '#52635A' }}>Scan or pay via installed UPI app</div>
                 </div>
               </label>
+              --- END PHASE 1 SUSPENSION --- */}
 
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                padding: '12px 14px',
+                padding: '14px 16px',
                 borderRadius: '12px',
-                border: paymentMethod === 'PAY_ON_DELIVERY' ? '2px solid #234B3C' : '1px solid #E5ECE7',
-                background: paymentMethod === 'PAY_ON_DELIVERY' ? '#F6FAF7' : '#FFF',
+                border: '2px solid #234B3C',
+                background: '#F6FAF7',
                 cursor: 'pointer'
               }}>
                 <input
@@ -256,8 +260,8 @@ export default function CheckoutPage() {
                   style={{ accentColor: '#234B3C' }}
                 />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B' }}>Pay on Next-Day Delivery (Cash or QR)</div>
-                  <div style={{ fontSize: '12px', color: '#52635A' }}>Pay delivery partner at your society drop point</div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B' }}>💵 Pay on Delivery (Cash on Delivery)</div>
+                  <div style={{ fontSize: '12px', color: '#52635A' }}>Pay in cash to the delivery partner when you collect your basket at the society drop desk</div>
                 </div>
               </label>
             </div>
@@ -448,7 +452,9 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
                 <span style={{ color: '#64748B', fontWeight: 600 }}>Payment Method:</span>
                 <span style={{ color: '#B45309', fontWeight: 800 }}>
-                  {paymentMethod === 'UPI' ? 'Instant UPI (GPay/PhonePe)' : 'Pay on Delivery (Cash/QR)'}
+                  {/* Phase 1: UPI commented out; Pay on Delivery only */}
+                  {/* {paymentMethod === 'UPI' ? 'Instant UPI (GPay/PhonePe)' : 'Pay on Delivery (Cash on Delivery)'} */}
+                  Pay on Delivery (Cash on Delivery)
                 </span>
               </div>
 
