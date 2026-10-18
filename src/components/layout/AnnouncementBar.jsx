@@ -8,15 +8,17 @@ export default function AnnouncementBar() {
   return (
     <div className="cutoff-announcement-bar">
       <div className="cutoff-badge-pill">
-        <Clock size={10.5} />
-        <span>⏰ Daily Cutoff: {cutoffInfo.cutoffTimeStr}</span>
+        <Clock size={11} />
+        <span>⚡ Dawn Harvest Lock: <strong>{cutoffInfo.cutoffTimeStr}</strong></span>
       </div>
       <div className="cutoff-text">
         {cutoffInfo.isPastCutoff ? (
-          <span>🌙 Today's harvest packed! Next dawn drop: <strong>{cutoffInfo.formattedDeliveryDate}</strong></span>
+          <span>
+            🌙 <strong>Today's morning batch locked & harvesting!</strong> Next dawn farm drop: <strong>{cutoffInfo.formattedDeliveryDate} (7 AM)</strong>
+          </span>
         ) : (
           <span>
-            Order within <strong>{cutoffInfo.hoursRemaining}h {cutoffInfo.minutesRemaining}m</strong> for <strong>Tomorrow's Dawn Harvest 🌿</strong>
+            🌿 Order within <strong>{cutoffInfo.hoursRemaining}h {cutoffInfo.minutesRemaining}m</strong> • Farm-fresh at your door <strong>Tomorrow by 7:00 AM 🌅</strong>
           </span>
         )}
       </div>
