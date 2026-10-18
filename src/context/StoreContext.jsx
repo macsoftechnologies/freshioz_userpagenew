@@ -9,15 +9,45 @@ export function StoreProvider({ children }) {
   const queryClient = useQueryClient();
   const catalog = useCatalog();
 
+  const prevProductsRef = React.useRef([]);
+  if (Array.isArray(catalog.products) && catalog.products.length > 0) {
+    prevProductsRef.current = catalog.products;
+  }
+  const prevCategoriesRef = React.useRef([]);
+  if (Array.isArray(catalog.categories) && catalog.categories.length > 0) {
+    prevCategoriesRef.current = catalog.categories;
+  }
+  const prevUnitsRef = React.useRef([]);
+  if (Array.isArray(catalog.units) && catalog.units.length > 0) {
+    prevUnitsRef.current = catalog.units;
+  }
+  const prevSocietiesRef = React.useRef([]);
+  if (Array.isArray(catalog.societies) && catalog.societies.length > 0) {
+    prevSocietiesRef.current = catalog.societies;
+  }
+
+  const activeProducts = (catalog.products && catalog.products.length > 0)
+    ? catalog.products
+    : prevProductsRef.current;
+  const activeCategories = (catalog.categories && catalog.categories.length > 0)
+    ? catalog.categories
+    : prevCategoriesRef.current;
+  const activeUnits = (catalog.units && catalog.units.length > 0)
+    ? catalog.units
+    : prevUnitsRef.current;
+  const activeSocieties = (catalog.societies && catalog.societies.length > 0)
+    ? catalog.societies
+    : prevSocietiesRef.current;
+
   const store = useMemo(() => ({
-    products: catalog.products || [],
-    categories: catalog.categories || [],
-    units: catalog.units || [],
-    societies: catalog.societies || [],
+    products: activeProducts,
+    categories: activeCategories,
+    units: activeUnits,
+    societies: activeSocieties,
     warehouses: catalog.warehouses || [],
     deliveryConfig: catalog.deliveryConfig,
     orders: [],
-  }), [catalog.products, catalog.categories, catalog.units, catalog.societies, catalog.warehouses, catalog.deliveryConfig]);
+  }), [activeProducts, activeCategories, activeUnits, activeSocieties, catalog.warehouses, catalog.deliveryConfig]);
 
   // Current logged in user (stored locally)
   const [activeUser, setActiveUser] = useState(() => {

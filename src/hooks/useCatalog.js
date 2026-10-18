@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 
 const EMPTY = { products: [], categories: [], units: [], societies: [], warehouses: [] };
@@ -9,9 +9,17 @@ const DELIVERY_FALLBACK = { baseFee: 25, freeDeliveryThreshold: 299, enableFreeD
 export function useCatalog() {
   const q = useQuery({
     queryKey: ['catalog'],
-    queryFn: () => apiClient(`/catalog?_t=${Date.now()}`),
-    staleTime: 0,
-    refetchInterval: 5_000,           // Auto-sync rates every 5 seconds in real-time
+    queryFn: async () => {
+      const res = await apiClient(`/catalog?_t=${Date.now()}`);
+      // Safety guard: NEVER accept null or malformed response that would wipe out the product catalog
+      if (!res || !Array.isArray(res.products)) {
+        throw new Error('Catalog payload is invalid or unavailable');
+      }
+      return res;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,                // 15 seconds fresh before triggering background sync
+    refetchInterval: 15_000,          // Refresh active prices smoothly without hammering the server
     refetchOnWindowFocus: true,       // Auto-refresh rates whenever user returns to website tab
     refetchIntervalInBackground: false,
   });
