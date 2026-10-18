@@ -9,7 +9,7 @@ import { matchesProductCategory } from '../utils/categoryMatcher';
 
 export default function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { store, isWholesale, setIsWholesale } = useStore();
+  const { store, isWholesale, setIsWholesale, isCatalogError, refetchCatalog } = useStore();
 
   const currentCat = searchParams.get('cat') || 'ALL';
   const searchQuery = searchParams.get('q') || '';
@@ -159,6 +159,32 @@ export default function CatalogPage() {
       {/* Product Grid or Loader */}
       {loading ? (
         <FreshProduceLoader text="Loading fresh crops..." subtext="Filtering dawn mandi varieties" />
+      ) : isCatalogError && (store.products || []).length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '50px 20px', background: '#FEF2F2', borderRadius: '16px', border: '1.5px solid #FCA5A5' }}>
+          <div style={{ fontSize: '42px', marginBottom: '12px' }}>⚠️</div>
+          <h3 style={{ fontSize: '18px', color: '#991B1B', marginBottom: '6px' }}>
+            Unable to Load Produce Catalog
+          </h3>
+          <p style={{ fontSize: '13px', color: '#B91C1C', marginBottom: '16px', maxWidth: '440px', margin: '0 auto 16px' }}>
+            We encountered a network issue communicating with our farm warehouse catalog service.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetchCatalog && refetchCatalog()}
+            style={{
+              background: '#234B3C',
+              color: '#FFF',
+              padding: '9px 22px',
+              borderRadius: '9999px',
+              fontWeight: 700,
+              fontSize: '13px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Retry Connection ⟳
+          </button>
+        </div>
       ) : filteredProducts.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', background: '#FFF', borderRadius: '16px', border: '1px solid #E5ECE7' }}>
           <div style={{ fontSize: '42px', marginBottom: '12px' }}>

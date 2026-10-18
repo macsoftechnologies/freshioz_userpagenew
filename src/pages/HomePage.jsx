@@ -24,7 +24,9 @@ export default function HomePage() {
     setIsWholesale, 
     cutoffInfo, 
     setIsAuthModalOpen,
-    activeUser 
+    activeUser,
+    isCatalogError,
+    refetchCatalog
   } = useStore();
 
   const dailySpecials = store.products || [];
@@ -195,7 +197,40 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {dailySpecials.length === 0 ? (
+        {isCatalogError && dailySpecials.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '36px 20px',
+            background: '#FEF2F2',
+            borderRadius: '16px',
+            border: '1.5px solid #FCA5A5',
+            margin: '8px 0 20px'
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚠️</div>
+            <h3 style={{ fontSize: '16px', color: '#991B1B', fontWeight: 800, marginBottom: '6px' }}>
+              Unable to Load Farm Fresh Catalog
+            </h3>
+            <p style={{ fontSize: '13px', color: '#B91C1C', maxWidth: '440px', margin: '0 auto 16px' }}>
+              We could not connect to the live catalog service. Please check your internet connection or try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => refetchCatalog && refetchCatalog()}
+              style={{
+                background: '#234B3C',
+                color: '#FFF',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '13px',
+                padding: '9px 22px',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              Retry Connection ⟳
+            </button>
+          </div>
+        ) : dailySpecials.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '40px 20px',

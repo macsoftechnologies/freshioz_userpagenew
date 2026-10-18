@@ -475,6 +475,12 @@ export function StoreProvider({ children }) {
       value={{
         store,
         products: store.products,
+        categories: store.categories,
+        units: store.units,
+        isCatalogError: catalog.isError,
+        catalogError: catalog.error,
+        isCatalogLoading: catalog.isLoading,
+        refetchCatalog: catalog.refetch,
         approvedSocieties,
         selectedSociety,
         setSelectedSocietyId,
