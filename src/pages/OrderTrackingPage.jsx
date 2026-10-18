@@ -6,7 +6,9 @@ import {
   Leaf, 
   PackageCheck, 
   Truck, 
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
@@ -18,6 +20,11 @@ export default function OrderTrackingPage() {
 
   const [liveServerOrder, setLiveServerOrder] = useState(null);
   const [_isLoadingLive, setIsLoadingLive] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('Placed order by mistake');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
+  const [cancelErrorMsg, setCancelErrorMsg] = useState('');
 
   // Secure order lookup: strictly match requested orderId for current user
   const userOrders = (store?.orders || []).filter(o => {
@@ -115,8 +122,85 @@ export default function OrderTrackingPage() {
 
   const currentStepIdx = getStepIndex(currentOrder?.status || 'CONFIRMED');
 
+  const handleConfirmCancel = async (e) => {
+    e.preventDefault();
+    if (!currentOrder) return;
+    if (currentOrder.status === 'DELIVERED' || currentOrder.status === 'CANCELLED') {
+      setCancelErrorMsg(`Order cannot be cancelled because it is already ${currentOrder.status.toLowerCase()}.`);
+      return;
+    }
+    try {
+      setIsCancelling(true);
+      setCancelErrorMsg('');
+      const updated = await orderService.cancel(currentOrder.id, {
+        reason: cancelReason || 'Cancelled by resident before delivery',
+      });
+      setLiveServerOrder(prev => ({
+        ...(prev || {}),
+        ...(updated || {}),
+        status: 'CANCELLED',
+        cancelledReason: cancelReason || 'Cancelled by resident before delivery',
+        cancelledAt: new Date().toISOString()
+      }));
+      const isCod = (currentOrder.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder.paymentStatus === 'PENDING_COD';
+      setCancelSuccessMsg(
+        isCod 
+          ? `Order #${currentOrder.id} has been cancelled. Since this was Pay on Delivery, no payment was collected and no charges apply.`
+          : `Order #${currentOrder.id} has been successfully cancelled. No further charges will apply.`
+      );
+      setIsCancelModalOpen(false);
+    } catch (err) {
+      setCancelErrorMsg(err?.message || 'Failed to cancel order on the server. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const isCancelled = currentOrder?.status === 'CANCELLED';
+
   return (
     <div className="section-container" style={{ paddingTop: '20px', maxWidth: '840px' }}>
+      {cancelSuccessMsg && (
+        <div style={{
+          background: '#ECFDF5',
+          border: '1.5px solid #A7F3D0',
+          borderRadius: '12px',
+          padding: '12px 18px',
+          color: '#065F46',
+          fontSize: '13.5px',
+          fontWeight: 700,
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <CheckCircle2 size={18} color="#059669" />
+          <span>{cancelSuccessMsg}</span>
+        </div>
+      )}
+
+      {isCancelled && (
+        <div style={{
+          background: '#FFF5F5',
+          border: '1.5px solid #FED7D7',
+          borderRadius: '14px',
+          padding: '14px 18px',
+          color: '#9B2C2C',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <AlertCircle size={20} color="#E53E3E" />
+          <div>
+            <strong>Order Cancelled:</strong> {currentOrder?.cancelledReason || 'Cancelled before delivery'}
+            {(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder?.paymentStatus === 'PENDING_COD'
+              ? ' • No payment collected (Pay on Delivery)'
+              : ''}
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: '20px' }}>
         <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#52635A', fontSize: '13px', fontWeight: 600 }}>
           <ArrowLeft size={16} /> Back to Store
@@ -130,8 +214,8 @@ export default function OrderTrackingPage() {
           </div>
 
           <span style={{
-            background: currentOrder?.status === 'DELIVERED' ? '#EBF7E5' : '#FEF3C7',
-            color: currentOrder?.status === 'DELIVERED' ? '#234B3C' : '#92400E',
+            background: isCancelled ? '#FEE2E2' : currentOrder?.status === 'DELIVERED' ? '#EBF7E5' : '#FEF3C7',
+            color: isCancelled ? '#DC2626' : currentOrder?.status === 'DELIVERED' ? '#234B3C' : '#92400E',
             fontWeight: 800,
             fontSize: '12px',
             padding: '4px 14px',
@@ -299,7 +383,144 @@ export default function OrderTrackingPage() {
           </div>
           <span style={{ fontSize: '17px' }}>₹{currentOrder?.totalAmount}</span>
         </div>
+
+        {!['DELIVERED', 'CANCELLED'].includes(currentOrder?.status) && (
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0F4F2', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCancelModalOpen(true);
+                setCancelReason('Placed order by mistake');
+                setCancelErrorMsg('');
+              }}
+              style={{
+                background: '#FFF5F5',
+                color: '#DC2626',
+                border: '1.5px solid #FECACA',
+                padding: '9px 20px',
+                borderRadius: '9999px',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              Cancel Order
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* CANCELLATION MODAL */}
+      {isCancelModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.55)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            position: 'relative'
+          }}>
+            <button
+              type="button"
+              onClick={() => setIsCancelModalOpen(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <AlertCircle size={24} />
+              </div>
+              <h3 style={{ fontSize: '19px', color: '#15221B', margin: 0 }}>
+                Cancel Order #{currentOrder?.id}?
+              </h3>
+              <p style={{ color: '#52635A', fontSize: '13px', margin: '6px 0 0' }}>
+                {(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder?.paymentStatus === 'PENDING_COD'
+                  ? 'Since this order is scheduled for Pay on Delivery, no payment was collected and your order will be cancelled immediately.'
+                  : 'Your order will be cancelled immediately and no further charges will apply.'}
+              </p>
+            </div>
+
+            {cancelErrorMsg && (
+              <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', color: '#B91C1C', fontSize: '12.5px', marginBottom: '14px' }}>
+                {cancelErrorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmCancel}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#234B3C', marginBottom: '6px' }}>
+                  Reason for Cancellation:
+                </label>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="form-input-control"
+                  style={{ width: '100%', height: '40px', borderRadius: '8px', border: '1.5px solid #CBD5E1', padding: '0 12px', fontSize: '13px', boxSizing: 'border-box' }}
+                >
+                  <option value="Placed order by mistake">Placed order by mistake</option>
+                  <option value="Need to change delivery flat / address">Need to change delivery flat / address</option>
+                  <option value="Forgot to add required items">Forgot to add required items</option>
+                  <option value="Away from home on delivery date">Away from home on delivery date</option>
+                  <option value="Other reason">Other reason</option>
+                </select>
+              </div>
+
+              <div style={{ background: '#F7FAF8', padding: '12px', borderRadius: '10px', fontSize: '12px', color: '#52635A', marginBottom: '18px', border: '1px solid #E5ECE7' }}>
+                <div>• Items: <strong>{currentOrder?.items?.map(i => i.name).join(', ')}</strong></div>
+                <div style={{ marginTop: '3px' }}>• Scheduled Drop: <strong>{currentOrder?.deliveryDate} ({currentOrder?.deliverySlot})</strong></div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCancelModalOpen(false)}
+                  style={{ flex: 1, padding: '11px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', color: '#475569' }}
+                >
+                  Keep Order
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCancelling}
+                  style={{ 
+                    flex: 2, 
+                    padding: '11px', 
+                    background: isCancelling ? '#94A3B8' : '#DC2626', 
+                    color: '#FFF', 
+                    border: 'none', 
+                    borderRadius: '9999px', 
+                    fontWeight: 800, 
+                    fontSize: '13px', 
+                    cursor: isCancelling ? 'not-allowed' : 'pointer', 
+                    boxShadow: isCancelling ? 'none' : '0 4px 12px rgba(220, 38, 38, 0.25)' 
+                  }}
+                >
+                  {isCancelling ? 'Cancelling on Server...' : 'Confirm Order Cancellation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

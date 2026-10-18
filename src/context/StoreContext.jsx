@@ -348,7 +348,7 @@ export function StoreProvider({ children }) {
   };
 
   // Place Order Flow
-  const placeOrder = async ({ deliverySlot, paymentMethod }) => {
+  const placeOrder = async ({ deliverySlot, paymentMethod, discountCode, discountAmount }) => {
     if (!activeUser || cart.length === 0) return null;
 
     const society = selectedSociety;
@@ -359,6 +359,9 @@ export function StoreProvider({ children }) {
     if (userToken) {
       headers['Authorization'] = `Bearer ${userToken}`;
     }
+
+    const appliedDiscountVal = Number(discountAmount) || 0;
+    const computedTotal = Math.max(0, cartSubtotal + deliveryFee + cartGst - appliedDiscountVal);
 
     const payload = {
       userPhone: activeUser.phone,
@@ -373,7 +376,9 @@ export function StoreProvider({ children }) {
       bulkSavings: totalBulkSavings,
       deliveryFee: deliveryFee,
       gstAmount: cartGst,
-      totalAmount: cartSubtotal + deliveryFee + cartGst,
+      totalAmount: computedTotal,
+      discountCode: discountCode || undefined,
+      discountAmount: appliedDiscountVal > 0 ? appliedDiscountVal : undefined,
       deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
       deliverySlot: deliverySlot || defaultSlotLabel,
       // Phase 1: Only Cash on Delivery (PAY_ON_DELIVERY) is permitted.

@@ -12,14 +12,21 @@ import {
   XCircle,
   ArrowRight,
   AlertCircle,
-  X
+  X,
+  Star,
+  Gift,
+  Copy,
+  Check,
+  MessageSquare
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
+import { discountService } from '../services/discountService';
+import { reviewService } from '../services/reviewService';
 
 export default function UserProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'orders'; // 'orders' | 'history' | 'profile'
+  const activeTab = searchParams.get('tab') || 'orders'; // 'orders' | 'history' | 'profile' | 'rewards'
 
   const { 
     activeUser, 
@@ -42,34 +49,73 @@ export default function UserProfilePage() {
   const [apiOrders, setApiOrders] = useState([]);
   const [_isLoadingOrders, setIsLoadingOrders] = useState(false);
 
+  // Customer Rewards & Discounts
+  const [discounts, setDiscounts] = useState([]);
+  const [_isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
+  const [copiedCode, setCopiedCode] = useState('');
+
+  // Customer Reviews State
+  const [myReviews, setMyReviews] = useState([]);
+  const [reviewingOrder, setReviewingOrder] = useState(null);
+  const [reviewActiveTab, setReviewActiveTab] = useState('PRODUCT'); // 'PRODUCT' | 'DELIVERY'
+  const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewFeedbackMsg, setReviewFeedbackMsg] = useState('');
+
+  // Website Review Modal
+  const [isWebsiteReviewOpen, setIsWebsiteReviewOpen] = useState(false);
+  const [websiteRating, setWebsiteRating] = useState(5);
+  const [websiteComment, setWebsiteComment] = useState('');
+  const [isSubmittingWebsiteReview, setIsSubmittingWebsiteReview] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
-    async function fetchLiveOrders() {
+    async function fetchUserData() {
       if (!activeUser?.phone) {
         setApiOrders([]);
+        setDiscounts([]);
+        setMyReviews([]);
         return;
       }
       setIsLoadingOrders(true);
+      setIsLoadingDiscounts(true);
       try {
-        const res = await orderService.getAll({ phone: activeUser.phone });
-        if (isMounted && Array.isArray(res)) {
-          setApiOrders(res);
+        const [ordersRes, discountsRes, reviewsRes] = await Promise.allSettled([
+          orderService.getAll({ phone: activeUser.phone }),
+          discountService.getMyDiscounts(),
+          reviewService.getMyReviews()
+        ]);
+        if (isMounted) {
+          if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
+            setApiOrders(ordersRes.value);
+          }
+          if (discountsRes.status === 'fulfilled' && Array.isArray(discountsRes.value)) {
+            setDiscounts(discountsRes.value);
+          }
+          if (reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value)) {
+            setMyReviews(reviewsRes.value);
+          }
         }
       } catch (err) {
-        console.warn('Live orders fetch note:', err?.message || err);
+        console.warn('User profile data fetch note:', err?.message || err);
       } finally {
-        if (isMounted) setIsLoadingOrders(false);
+        if (isMounted) {
+          setIsLoadingOrders(false);
+          setIsLoadingDiscounts(false);
+        }
       }
     }
-    fetchLiveOrders();
+    fetchUserData();
     return () => { isMounted = false; };
   }, [activeUser?.phone, activeUser?.id]);
 
   const handleConfirmCancel = async (e) => {
     e.preventDefault();
     if (!cancellingOrder) return;
-    if (cancellingOrder.status !== 'CONFIRMED') {
-      alert('Order cannot be cancelled once procurement and warehouse crating has commenced.');
+    if (cancellingOrder.status === 'DELIVERED' || cancellingOrder.status === 'CANCELLED') {
+      alert(`Order cannot be cancelled because it is already ${cancellingOrder.status.toLowerCase()}.`);
       setCancellingOrder(null);
       return;
     }
@@ -100,6 +146,134 @@ export default function UserProfilePage() {
       alert(err?.message || 'Failed to cancel order on the server. Please try again.');
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleCopyCode = (code) => {
+    navigator.clipboard?.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(''), 3000);
+  };
+
+  const handleOpenReviewModal = (order) => {
+    setReviewingOrder(order);
+    setReviewActiveTab('PRODUCT');
+    const firstItem = order.items?.[0] || null;
+    setSelectedReviewProduct(firstItem);
+    setReviewFeedbackMsg('');
+
+    // Prepopulate if previously reviewed
+    const existing = myReviews.find(r => r.orderId === order.id && r.productId === (firstItem?.productId || firstItem?.id));
+    if (existing) {
+      setReviewRating(existing.rating || 5);
+      setReviewComment(existing.comment || '');
+    } else {
+      setReviewRating(5);
+      setReviewComment('');
+    }
+  };
+
+  const handleSelectProductToReview = (item) => {
+    setSelectedReviewProduct(item);
+    setReviewFeedbackMsg('');
+    const existing = myReviews.find(r => r.orderId === reviewingOrder?.id && r.productId === (item?.productId || item?.id));
+    if (existing) {
+      setReviewRating(existing.rating || 5);
+      setReviewComment(existing.comment || '');
+    } else {
+      setReviewRating(5);
+      setReviewComment('');
+    }
+  };
+
+  const handleSelectDeliveryTab = () => {
+    setReviewActiveTab('DELIVERY');
+    setReviewFeedbackMsg('');
+    const existing = myReviews.find(r => r.orderId === reviewingOrder?.id && r.type === 'DELIVERY');
+    if (existing) {
+      setReviewRating(existing.rating || 5);
+      setReviewComment(existing.comment || '');
+    } else {
+      setReviewRating(5);
+      setReviewComment('');
+    }
+  };
+
+  const handleSubmitOrderReview = async (e) => {
+    e.preventDefault();
+    if (!reviewingOrder) return;
+    setIsSubmittingReview(true);
+    setReviewFeedbackMsg('');
+
+    try {
+      if (reviewActiveTab === 'PRODUCT') {
+        if (!selectedReviewProduct) {
+          alert('Please select a product from your order to review.');
+          return;
+        }
+        const productId = selectedReviewProduct.productId || selectedReviewProduct.id;
+        const existing = myReviews.find(r => r.orderId === reviewingOrder.id && r.productId === productId);
+        if (existing) {
+          await reviewService.updateReview(existing.id, { rating: reviewRating, comment: reviewComment });
+        } else {
+          await reviewService.createReview({
+            type: 'PRODUCT',
+            orderId: reviewingOrder.id,
+            productId,
+            rating: reviewRating,
+            comment: reviewComment
+          });
+        }
+        setReviewFeedbackMsg(`Thank you! Your product review for ${selectedReviewProduct.name} has been submitted for moderation.`);
+      } else {
+        const existing = myReviews.find(r => r.orderId === reviewingOrder.id && r.type === 'DELIVERY');
+        if (existing) {
+          await reviewService.updateReview(existing.id, { rating: reviewRating, comment: reviewComment });
+        } else {
+          await reviewService.createReview({
+            type: 'DELIVERY',
+            orderId: reviewingOrder.id,
+            rating: reviewRating,
+            comment: reviewComment
+          });
+        }
+        setReviewFeedbackMsg('Thank you! Your delivery experience rating has been recorded.');
+      }
+
+      const updated = await reviewService.getMyReviews();
+      if (Array.isArray(updated)) setMyReviews(updated);
+      setTimeout(() => {
+        setReviewFeedbackMsg('');
+      }, 4000);
+    } catch (err) {
+      alert(err.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleSubmitWebsiteReview = async (e) => {
+    e.preventDefault();
+    setIsSubmittingWebsiteReview(true);
+    try {
+      const existing = myReviews.find(r => r.type === 'WEBSITE');
+      if (existing) {
+        await reviewService.updateReview(existing.id, { rating: websiteRating, comment: websiteComment });
+      } else {
+        await reviewService.createReview({
+          type: 'WEBSITE',
+          rating: websiteRating,
+          comment: websiteComment
+        });
+      }
+      const updated = await reviewService.getMyReviews();
+      if (Array.isArray(updated)) setMyReviews(updated);
+      setIsWebsiteReviewOpen(false);
+      alert('Thank you for sharing your experience using Freshioz! Our product team truly appreciates your feedback.');
+    } catch (err) {
+      alert(err.message || 'Failed to submit website review. Please try again.');
+    } finally {
+      setIsSubmittingWebsiteReview(false);
     }
   };
 
@@ -262,32 +436,67 @@ export default function UserProfilePage() {
           </div>
         </div>
 
-        {/* Prominent High-Visibility Logout Button */}
-        <button
-          type="button"
-          onClick={() => requestLogout('USER')}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '9px 18px',
-            borderRadius: '9999px',
-            background: '#FFF1F2',
-            border: '1.5px solid #FFE4E6',
-            color: '#E11D48',
-            fontWeight: 800,
-            fontSize: '13px',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-          title="Sign out of your Freshioz account"
-        >
-          <LogOut size={16} />
-          <span>Logout Account</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              const existing = myReviews.find(r => r.type === 'WEBSITE');
+              if (existing) {
+                setWebsiteRating(existing.rating || 5);
+                setWebsiteComment(existing.comment || '');
+              } else {
+                setWebsiteRating(5);
+                setWebsiteComment('');
+              }
+              setIsWebsiteReviewOpen(true);
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '9px 18px',
+              borderRadius: '9999px',
+              background: '#EBF2EE',
+              border: '1.5px solid #C8DBD0',
+              color: '#234B3C',
+              fontWeight: 800,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Share feedback about the Freshioz website"
+          >
+            <MessageSquare size={15} />
+            <span>Website Feedback</span>
+          </button>
+
+          {/* Prominent High-Visibility Logout Button */}
+          <button
+            type="button"
+            onClick={() => requestLogout('USER')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '9999px',
+              background: '#FFF1F2',
+              border: '1.5px solid #FFE4E6',
+              color: '#E11D48',
+              fontWeight: 800,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Sign out of your Freshioz account"
+          >
+            <LogOut size={16} />
+            <span>Logout Account</span>
+          </button>
+        </div>
       </div>
 
-      {/* Top 3 Navigation Tabs: Orders, History, Profile */}
+      {/* Top 4 Navigation Tabs: Orders, History, Profile, Rewards */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -365,6 +574,42 @@ export default function UserProfilePage() {
           }}>
             {completedOrders.length}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSearchParams({ tab: 'rewards' })}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            border: 'none',
+            background: 'none',
+            fontSize: '14px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            color: activeTab === 'rewards' ? '#234B3C' : '#52635A',
+            borderBottom: activeTab === 'rewards' ? '3px solid #234B3C' : '3px solid transparent',
+            marginBottom: '-4px',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Gift size={17} />
+          <span>Rewards & Discounts</span>
+          {discounts.filter(d => d.status === 'ACTIVE').length > 0 && (
+            <span style={{
+              background: '#059669',
+              color: '#FFF',
+              fontSize: '11px',
+              padding: '1px 7px',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {discounts.filter(d => d.status === 'ACTIVE').length} Active
+            </span>
+          )}
         </button>
 
         <button
@@ -755,7 +1000,7 @@ export default function UserProfilePage() {
                           </Link>
                         )}
 
-                        {order.status === 'CONFIRMED' && (
+                        {!['DELIVERED', 'CANCELLED'].includes(order.status) && (
                           <button
                             type="button"
                             onClick={() => {
@@ -781,9 +1026,31 @@ export default function UserProfilePage() {
                           </button>
                         )}
 
-                        {/* DELIVERED: Reorder and Invoice button */}
+                        {/* DELIVERED: Rate, Reorder and Invoice button */}
                         {isDelivered && (
                           <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReviewModal(order)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: '#FEF3C7',
+                                color: '#92400E',
+                                border: '1px solid #FDE68A',
+                                padding: '8px 14px',
+                                borderRadius: '9999px',
+                                fontSize: '12.5px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <Star size={13} fill="#F59E0B" color="#F59E0B" />
+                              <span>Rate Harvest & Delivery</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => handleReorder(order)}
@@ -1105,26 +1372,49 @@ export default function UserProfilePage() {
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               {isDelivered && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleReorder(order)}
-                                  style={{
-                                    background: '#EBF2EE',
-                                    color: '#234B3C',
-                                    border: '1px solid #C8DBD0',
-                                    padding: '7px 12px',
-                                    borderRadius: '9999px',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                  }}
-                                >
-                                  <RotateCcw size={12} />
-                                  <span>Reorder</span>
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReviewModal(order)}
+                                    style={{
+                                      background: '#FEF3C7',
+                                      color: '#92400E',
+                                      border: '1px solid #FDE68A',
+                                      padding: '7px 12px',
+                                      borderRadius: '9999px',
+                                      fontSize: '12px',
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <Star size={12} fill="#F59E0B" color="#F59E0B" />
+                                    <span>Rate</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReorder(order)}
+                                    style={{
+                                      background: '#EBF2EE',
+                                      color: '#234B3C',
+                                      border: '1px solid #C8DBD0',
+                                      padding: '7px 12px',
+                                      borderRadius: '9999px',
+                                      fontSize: '12px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <RotateCcw size={12} />
+                                    <span>Reorder</span>
+                                  </button>
+                                </>
                               )}
 
                               <Link
@@ -1276,6 +1566,229 @@ export default function UserProfilePage() {
         </div>
       )}
 
+      {/* TAB 4: REWARDS & ACCOUNT DISCOUNTS */}
+      {activeTab === 'rewards' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, #1E3D31 0%, #15221B 100%)',
+            color: '#FFFFFF',
+            borderRadius: '20px',
+            padding: '28px',
+            boxShadow: '0 8px 24px rgba(21, 34, 27, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '20px'
+          }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.15)', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: 700, marginBottom: '10px' }}>
+                <Gift size={14} color="#86EFAC" />
+                <span>Exclusive Account-Bound Rewards</span>
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
+                My Rewards & Feedback Discounts
+              </h2>
+              <p style={{ margin: 0, fontSize: '13.5px', color: '#CBD5E1', maxWidth: '520px', lineHeight: '1.5' }}>
+                Earned from rating delivered harvests and providing feedback to our sourcing team. These discounts are tied directly to your registered number and apply seamlessly at checkout!
+              </p>
+            </div>
+
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              borderRadius: '16px',
+              padding: '16px 24px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: '#86EFAC' }}>
+                {discounts.filter(d => d.status === 'ACTIVE').length}
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#E2E8F0', marginTop: '2px' }}>
+                Active Vouchers Available
+              </div>
+            </div>
+          </div>
+
+          {/* Active Discounts List */}
+          <div>
+            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Available Vouchers ({discounts.filter(d => d.status === 'ACTIVE').length})</span>
+            </h3>
+
+            {discounts.filter(d => d.status === 'ACTIVE').length === 0 ? (
+              <div style={{
+                background: '#FFFFFF',
+                borderRadius: '18px',
+                border: '1.5px solid #E5ECE7',
+                padding: '40px 24px',
+                textAlign: 'center',
+                color: '#64748B'
+              }}>
+                <Gift size={36} color="#CBD5E1" style={{ margin: '0 auto 12px' }} />
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#15221B', marginBottom: '4px' }}>
+                  No active discount vouchers right now
+                </div>
+                <p style={{ fontSize: '13px', color: '#52635A', maxWidth: '420px', margin: '0 auto 16px' }}>
+                  Rate your produce and delivery under <strong>Purchase History</strong> to receive exclusive thank-you discounts from our farm team!
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSearchParams({ tab: 'history' })}
+                  style={{
+                    background: '#234B3C',
+                    color: '#FFF',
+                    padding: '8px 20px',
+                    borderRadius: '9999px',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  View Delivered Orders to Rate
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {discounts.filter(d => d.status === 'ACTIVE').map(disc => (
+                  <div
+                    key={disc.id}
+                    style={{
+                      background: '#FFFFFF',
+                      borderRadius: '16px',
+                      border: '1.5px solid #86EFAC',
+                      padding: '20px',
+                      boxShadow: '0 4px 16px rgba(16, 185, 129, 0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      position: 'relative'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{
+                          background: '#ECFDF5',
+                          color: '#047857',
+                          border: '1px solid #A7F3D0',
+                          padding: '3px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '11px',
+                          fontWeight: 800
+                        }}>
+                          {disc.discountType === 'PERCENTAGE' ? `${disc.discountValue}% DISCOUNT` : `₹${disc.discountValue} FLAT REWARD`}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                          Exp: {new Date(disc.expiresAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 8px' }}>
+                        <div style={{
+                          fontSize: '18px',
+                          fontWeight: 900,
+                          color: '#15221B',
+                          letterSpacing: '1px',
+                          background: '#F1F5F9',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: '1px dashed #CBD5E1'
+                        }}>
+                          {disc.code}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(disc.code)}
+                          style={{
+                            background: copiedCode === disc.code ? '#10B981' : '#EBF2EE',
+                            color: copiedCode === disc.code ? '#FFF' : '#234B3C',
+                            border: 'none',
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {copiedCode === disc.code ? <Check size={13} /> : <Copy size={13} />}
+                          <span>{copiedCode === disc.code ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+
+                      {disc.issueReason && (
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#334155',
+                          background: '#F8FAFC',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          marginBottom: '8px',
+                          borderLeft: '3px solid #10B981'
+                        }}>
+                          <strong>Admin Note:</strong> {disc.issueReason}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '11.5px', color: '#64748B', borderTop: '1px solid #F1F5F9', paddingTop: '10px', marginTop: '10px' }}>
+                      {disc.minOrderAmount > 0 ? `• Applicable on orders above ₹${disc.minOrderAmount}` : '• No minimum purchase required'}
+                      <div style={{ marginTop: '2px' }}>• Valid for {disc.maxUses - disc.usedCount} more order checkout</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Past / Redeemed Discounts */}
+          {discounts.filter(d => d.status !== 'ACTIVE').length > 0 && (
+            <div style={{ marginTop: '12px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#64748B', marginBottom: '12px' }}>
+                Used & Past Vouchers ({discounts.filter(d => d.status !== 'ACTIVE').length})
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                {discounts.filter(d => d.status !== 'ACTIVE').map(disc => (
+                  <div
+                    key={disc.id}
+                    style={{
+                      background: '#F8FAFC',
+                      borderRadius: '12px',
+                      border: '1px solid #E2E8F0',
+                      padding: '14px',
+                      opacity: 0.85
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 800, fontSize: '13px', color: '#475569' }}>{disc.code}</span>
+                      <span style={{
+                        fontSize: '10.5px',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: disc.status === 'REDEEMED' ? '#E2E8F0' : '#FEE2E2',
+                        color: disc.status === 'REDEEMED' ? '#475569' : '#DC2626'
+                      }}>
+                        {disc.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>
+                      {disc.discountType === 'PERCENTAGE' ? `${disc.discountValue}% OFF` : `₹${disc.discountValue} OFF`}
+                      {disc.redeemedAt ? ` • Redeemed on ${new Date(disc.redeemedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}` : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cancel Order Confirmation Modal */}
       {cancellingOrder && (
         <div className="modal-backdrop-overlay">
@@ -1351,6 +1864,410 @@ export default function UserProfilePage() {
                   }}
                 >
                   {isCancelling ? 'Cancelling on Server...' : 'Confirm Order Cancellation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= ORDER & DELIVERY REVIEW MODAL ================= */}
+      {reviewingOrder && (
+        <div className="modal-backdrop-overlay" onClick={() => setReviewingOrder(null)}>
+          <div className="modal-dialog-box" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="modal-close-icon"
+              onClick={() => setReviewingOrder(null)}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: '6px' }}>
+                  ORDER DELIVERED
+                </span>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>
+                  {reviewingOrder.deliveryDate}
+                </span>
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#15221B', margin: 0 }}>
+                Rate Order #{reviewingOrder.id}
+              </h3>
+              <p style={{ fontSize: '13px', color: '#52635A', margin: '4px 0 0' }}>
+                Your ratings help local farmers improve harvesting and earn you exclusive reward vouchers!
+              </p>
+            </div>
+
+            {/* Sub-Tabs: Rate Crop vs Rate Delivery */}
+            <div style={{ display: 'flex', gap: '8px', borderBottom: '1.5px solid #E5ECE7', marginBottom: '18px', paddingBottom: '2px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setReviewActiveTab('PRODUCT');
+                  setReviewFeedbackMsg('');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  color: reviewActiveTab === 'PRODUCT' ? '#234B3C' : '#64748B',
+                  borderBottom: reviewActiveTab === 'PRODUCT' ? '3px solid #234B3C' : '3px solid transparent',
+                  marginBottom: '-3.5px'
+                }}
+              >
+                🥬 Rate Farm Produce ({reviewingOrder.items?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={handleSelectDeliveryTab}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  color: reviewActiveTab === 'DELIVERY' ? '#234B3C' : '#64748B',
+                  borderBottom: reviewActiveTab === 'DELIVERY' ? '3px solid #234B3C' : '3px solid transparent',
+                  marginBottom: '-3.5px'
+                }}
+              >
+                🚚 Rate Delivery Service
+              </button>
+            </div>
+
+            {/* TAB 1: PRODUCT REVIEW */}
+            {reviewActiveTab === 'PRODUCT' && (
+              <form onSubmit={handleSubmitOrderReview}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#15221B', marginBottom: '8px' }}>
+                    Select Harvest Crop to Rate:
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {reviewingOrder.items?.map((item) => {
+                      const itemId = item.productId || item.id;
+                      const isSelected = (selectedReviewProduct?.productId || selectedReviewProduct?.id) === itemId;
+                      const isAlreadyReviewed = myReviews.some(r => r.orderId === reviewingOrder.id && r.productId === itemId);
+
+                      return (
+                        <button
+                          key={itemId}
+                          type="button"
+                          onClick={() => handleSelectProductToReview(item)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: isSelected ? '1.5px solid #234B3C' : '1px solid #CBD5E1',
+                            background: isSelected ? '#EBF2EE' : '#FFFFFF',
+                            color: isSelected ? '#234B3C' : '#334155',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <span>{item.name}</span>
+                          {isAlreadyReviewed && (
+                            <span style={{ fontSize: '10px', color: '#10B981', fontWeight: 800 }}>★</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {selectedReviewProduct && (
+                  <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#15221B', marginBottom: '8px' }}>
+                      How fresh was the {selectedReviewProduct.name}?
+                    </div>
+
+                    {/* Star Rating Controls */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                      {[1, 2, 3, 4, 5].map((starVal) => (
+                        <button
+                          key={starVal}
+                          type="button"
+                          onClick={() => setReviewRating(starVal)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            transition: 'transform 0.1s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <Star
+                            size={28}
+                            fill={starVal <= reviewRating ? '#F59E0B' : '#E2E8F0'}
+                            color={starVal <= reviewRating ? '#D97706' : '#CBD5E1'}
+                          />
+                        </button>
+                      ))}
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: '#92400E', marginLeft: '6px' }}>
+                        {reviewRating === 5 ? '5 ★ Excellent & Crisp' : reviewRating === 4 ? '4 ★ Good & Fresh' : reviewRating === 3 ? '3 ★ Average' : reviewRating === 2 ? '2 ★ Below Expectations' : '1 ★ Poor Quality'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                        Written Feedback (Optional):
+                      </label>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Tell other residents and our farm sorters about the freshness, flavor, or texture..."
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #CBD5E1',
+                          fontSize: '13px',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit',
+                          resize: 'vertical'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {reviewFeedbackMsg && (
+                  <div style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#065F46', padding: '10px 14px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={16} />
+                    <span>{reviewFeedbackMsg}</span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setReviewingOrder(null)}
+                    style={{ flex: 1, padding: '10px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', color: '#475569' }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    style={{
+                      flex: 2,
+                      padding: '10px',
+                      background: '#234B3C',
+                      color: '#FFF',
+                      border: 'none',
+                      borderRadius: '9999px',
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      cursor: isSubmittingReview ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isSubmittingReview ? 'Submitting...' : 'Submit Produce Rating'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* TAB 2: DELIVERY REVIEW */}
+            {reviewActiveTab === 'DELIVERY' && (
+              <form onSubmit={handleSubmitOrderReview}>
+                <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#15221B', marginBottom: '8px' }}>
+                    How was the society morning delivery drop?
+                  </div>
+
+                  {/* Star Rating Controls */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    {[1, 2, 3, 4, 5].map((starVal) => (
+                      <button
+                        key={starVal}
+                        type="button"
+                        onClick={() => setReviewRating(starVal)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          transition: 'transform 0.1s ease'
+                        }}
+                      >
+                        <Star
+                          size={28}
+                          fill={starVal <= reviewRating ? '#F59E0B' : '#E2E8F0'}
+                          color={starVal <= reviewRating ? '#D97706' : '#CBD5E1'}
+                        />
+                      </button>
+                    ))}
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#92400E', marginLeft: '6px' }}>
+                      {reviewRating === 5 ? '5 ★ Prompt & Well-Packed' : reviewRating === 4 ? '4 ★ Satisfactory' : reviewRating === 3 ? '3 ★ Average' : reviewRating === 2 ? '2 ★ Delayed / Damaged' : '1 ★ Unsatisfactory'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                      Delivery Comments (Optional):
+                    </label>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Was the crate drop at your lobby desk on time? Did the rider follow gate delivery notes?"
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #CBD5E1',
+                        fontSize: '13px',
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {reviewFeedbackMsg && (
+                  <div style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#065F46', padding: '10px 14px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={16} />
+                    <span>{reviewFeedbackMsg}</span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setReviewingOrder(null)}
+                    style={{ flex: 1, padding: '10px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', color: '#475569' }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    style={{
+                      flex: 2,
+                      padding: '10px',
+                      background: '#234B3C',
+                      color: '#FFF',
+                      border: 'none',
+                      borderRadius: '9999px',
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      cursor: isSubmittingReview ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isSubmittingReview ? 'Submitting...' : 'Submit Delivery Rating'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= WEBSITE PLATFORM REVIEW MODAL ================= */}
+      {isWebsiteReviewOpen && (
+        <div className="modal-backdrop-overlay" onClick={() => setIsWebsiteReviewOpen(false)}>
+          <div className="modal-dialog-box" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="modal-close-icon"
+              onClick={() => setIsWebsiteReviewOpen(false)}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#EBF2EE', color: '#234B3C', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                <MessageSquare size={24} />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#15221B', margin: 0 }}>
+                Website & Platform Feedback
+              </h3>
+              <p style={{ fontSize: '13px', color: '#52635A', margin: '6px 0 0' }}>
+                How easy was it to discover produce, customize quantities, and place your order?
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitWebsiteReview}>
+              <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                  {[1, 2, 3, 4, 5].map((starVal) => (
+                    <button
+                      key={starVal}
+                      type="button"
+                      onClick={() => setWebsiteRating(starVal)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                    >
+                      <Star
+                        size={32}
+                        fill={starVal <= websiteRating ? '#F59E0B' : '#E2E8F0'}
+                        color={starVal <= websiteRating ? '#D97706' : '#CBD5E1'}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#92400E' }}>
+                  {websiteRating === 5 ? '5 ★ Loved the website experience!' : websiteRating === 4 ? '4 ★ Good & easy to use' : websiteRating === 3 ? '3 ★ Average' : websiteRating === 2 ? '2 ★ Hard to navigate' : '1 ★ Needs major improvement'}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                  Your Suggestions / Experience (Optional):
+                </label>
+                <textarea
+                  value={websiteComment}
+                  onChange={(e) => setWebsiteComment(e.target.value)}
+                  placeholder="Tell us what you liked or what features you would like to see added..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: '13px',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsWebsiteReviewOpen(false)}
+                  style={{ flex: 1, padding: '11px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', color: '#475569' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingWebsiteReview}
+                  style={{
+                    flex: 2,
+                    padding: '11px',
+                    background: '#234B3C',
+                    color: '#FFF',
+                    border: 'none',
+                    borderRadius: '9999px',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    cursor: isSubmittingWebsiteReview ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSubmittingWebsiteReview ? 'Submitting...' : 'Submit Website Review'}
                 </button>
               </div>
             </form>

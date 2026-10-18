@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, 
@@ -13,9 +13,13 @@ import {
   AlertCircle,
   HelpCircle,
   Package,
-  X
+  X,
+  Gift,
+  Tag,
+  Check
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { discountService } from '../services/discountService';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -42,6 +46,53 @@ export default function CheckoutPage() {
   const [isPlacing, setIsPlacing] = useState(false);
   const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
 
+  // Rewards & Discount Coupon State
+  const [availableDiscounts, setAvailableDiscounts] = useState([]);
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [couponInput, setCouponInput] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDiscounts() {
+      if (!activeUser) return;
+      try {
+        const res = await discountService.getMyDiscounts();
+        if (isMounted && Array.isArray(res)) {
+          setAvailableDiscounts(res.filter(d => d.status === 'ACTIVE'));
+        }
+      } catch (err) {
+        console.warn('Could not load user discounts:', err?.message || err);
+      }
+    }
+    loadDiscounts();
+    return () => { isMounted = false; };
+  }, [activeUser]);
+
+  const handleApplyDiscount = async (codeToApply) => {
+    const code = (codeToApply || couponInput).trim();
+    if (!code) return;
+    setIsValidatingCoupon(true);
+    setCouponError('');
+    try {
+      const res = await discountService.validateDiscount(code, cartSubtotal);
+      if (res && res.isValid) {
+        setAppliedDiscount(res);
+        setCouponInput('');
+      }
+    } catch (err) {
+      setCouponError(err.message || 'Invalid or ineligible coupon code.');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setCouponError('');
+  };
+
   if (cart.length === 0) {
     return (
       <div className="section-container" style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -63,7 +114,8 @@ export default function CheckoutPage() {
     );
   }
 
-  const grandTotal = cartSubtotal + (cartSubtotal > 0 ? deliveryFee : 0) + (cartGst || 0);
+  const discountDeduction = appliedDiscount ? Math.min(appliedDiscount.calculatedDeduction, cartSubtotal) : 0;
+  const grandTotal = Math.max(0, cartSubtotal + (cartSubtotal > 0 ? deliveryFee : 0) + (cartGst || 0) - discountDeduction);
 
   let estimatedCashback = 0;
   if (selectedSociety) {
@@ -87,7 +139,9 @@ export default function CheckoutPage() {
     try {
       const order = await placeOrder({
         deliverySlot,
-        paymentMethod
+        paymentMethod,
+        discountCode: appliedDiscount?.code,
+        discountAmount: discountDeduction
       });
       setIsConfirmOrderModalOpen(false);
       setIsPlacing(false);
@@ -332,6 +386,165 @@ export default function CheckoutPage() {
           </div>
           */}
 
+          {/* Rewards & Promo Code Section */}
+          <div style={{
+            borderTop: '1px solid #E5ECE7',
+            paddingTop: '14px',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 800, color: '#15221B', marginBottom: '8px' }}>
+              <Gift size={16} color="#234B3C" />
+              <span>Feedback Reward or Promo Code</span>
+            </div>
+
+            {appliedDiscount ? (
+              <div style={{
+                background: '#ECFDF5',
+                border: '1.5px solid #10B981',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontWeight: 800, color: '#047857', fontSize: '13px', letterSpacing: '0.5px' }}>
+                      {appliedDiscount.code}
+                    </span>
+                    <span style={{ background: '#10B981', color: '#FFF', fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
+                      APPLIED
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#065F46', marginTop: '2px' }}>
+                    You saved ₹{discountDeduction}! {appliedDiscount.issueReason ? `(${appliedDiscount.issueReason})` : ''}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveDiscount}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#DC2626',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    padding: '4px'
+                  }}
+                  title="Remove coupon"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div>
+                {/* Available Account-Bound Rewards */}
+                {availableDiscounts.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                    {availableDiscounts.map(disc => {
+                      const isMinMet = cartSubtotal >= (disc.minOrderAmount || 0);
+                      return (
+                        <div
+                          key={disc.id}
+                          style={{
+                            background: '#F0FDF4',
+                            border: '1px dashed #86EFAC',
+                            borderRadius: '10px',
+                            padding: '8px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '12.5px', color: '#166534' }}>
+                              {disc.discountType === 'PERCENTAGE' ? `${disc.discountValue}% OFF` : `₹${disc.discountValue} FLAT OFF`}
+                              <span style={{ marginLeft: '6px', fontSize: '11px', color: '#15803D', fontWeight: 600 }}>({disc.code})</span>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#4B5563' }}>
+                              {disc.minOrderAmount > 0 ? `Min cart ₹${disc.minOrderAmount}` : 'No minimum order'}
+                              {disc.issueReason ? ` • ${disc.issueReason}` : ''}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!isMinMet || isValidatingCoupon}
+                            onClick={() => handleApplyDiscount(disc.code)}
+                            style={{
+                              background: isMinMet ? '#234B3C' : '#E2E8F0',
+                              color: isMinMet ? '#FFF' : '#94A3B8',
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              fontSize: '11.5px',
+                              fontWeight: 800,
+                              cursor: isMinMet ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Manual Code Entry */}
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="text"
+                    placeholder="Enter code (e.g. THANKS50)"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleApplyDiscount();
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #DCE5E0',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      letterSpacing: '0.5px'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!couponInput.trim() || isValidatingCoupon}
+                    onClick={() => handleApplyDiscount()}
+                    style={{
+                      background: couponInput.trim() ? '#234B3C' : '#CBD5E1',
+                      color: '#FFF',
+                      border: 'none',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: couponInput.trim() ? 'pointer' : 'default'
+                    }}
+                  >
+                    {isValidatingCoupon ? 'Checking...' : 'Apply'}
+                  </button>
+                </div>
+                {couponError && (
+                  <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '4px', fontWeight: 600 }}>
+                    {couponError}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Bill Details */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #E5ECE7', paddingTop: '14px', marginBottom: '20px' }}>
             <div className="bill-summary-row">
@@ -352,6 +565,12 @@ export default function CheckoutPage() {
               <div className="bill-summary-row">
                 <span>GST / Taxes</span>
                 <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{cartGst}</span>
+              </div>
+            )}
+            {discountDeduction > 0 && (
+              <div className="bill-summary-row" style={{ color: '#059669', fontWeight: 700 }}>
+                <span>Reward / Coupon Discount ({appliedDiscount?.code})</span>
+                <span>-₹{discountDeduction}</span>
               </div>
             )}
             <div className="bill-total-row">

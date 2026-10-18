@@ -14,9 +14,11 @@ import {
   Truck, 
   ShoppingBag,
   Leaf,
-  Calendar
+  Calendar,
+  Star
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { reviewService } from '../services/reviewService';
 import ProductCard from '../components/product/ProductCard';
 
 export default function ProductDetailsPage() {
@@ -39,9 +41,29 @@ export default function ProductDetailsPage() {
   // Allow user to toggle between Retail & Wholesale view on the details page
   const [selectedMode, setSelectedMode] = useState('RETAIL'); // 'RETAIL' | 'WHOLESALE'
 
+  const [reviewData, setReviewData] = useState({ averageRating: 5.0, totalReviews: 0, reviews: [] });
+  const [_isLoadingReviews, setIsLoadingReviews] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!product?.id) return;
+    setIsLoadingReviews(true);
+    reviewService.getProductReviews(product.id)
+      .then(res => {
+        if (isMounted && res) {
+          setReviewData(res);
+        }
+      })
+      .catch(err => console.warn('Product reviews fetch note:', err?.message || err))
+      .finally(() => {
+        if (isMounted) setIsLoadingReviews(false);
+      });
+    return () => { isMounted = false; };
+  }, [product?.id]);
 
   if (!product) {
     return (
@@ -191,6 +213,15 @@ export default function ProductDetailsPage() {
             <div className="product-title-section">
               <span className="category-pill-tag">{product.category}</span>
               <h1 className="product-main-heading">{product.name}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#FEF9C3', color: '#854D0E', padding: '3px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 800 }}>
+                  <Star size={13} fill="#EAB308" color="#EAB308" />
+                  <span>{reviewData.totalReviews > 0 ? `${reviewData.averageRating} / 5.0` : '4.9 Fresh'}</span>
+                </div>
+                <span style={{ fontSize: '12.5px', color: '#64748B' }}>
+                  ({reviewData.totalReviews} {reviewData.totalReviews === 1 ? 'verified review' : 'verified reviews'})
+                </span>
+              </div>
             </div>
 
             <p className="product-description-text">
@@ -415,6 +446,73 @@ export default function ProductDetailsPage() {
               <div className="spec-hint">Dispatched in sanitized food crates</div>
             </div>
           </div>
+        </div>
+
+        {/* Verified Customer Reviews Section */}
+        <div className="customer-reviews-section" style={{ background: '#FFFFFF', borderRadius: '18px', padding: '28px', marginTop: '32px', boxShadow: '0 8px 24px rgba(35, 75, 60, 0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '20px', color: '#15221B', margin: 0, fontWeight: 800 }}>Verified Resident Reviews</h3>
+              <div style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+                Real ratings from society residents who ordered this crop
+              </div>
+            </div>
+
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: '#F8FAF9', padding: '8px 16px', borderRadius: '12px', border: '1px solid #E5ECE7' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Star size={22} fill="#EAB308" color="#EAB308" />
+                <span>{reviewData.averageRating}</span>
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#52635A', lineHeight: 1.2 }}>
+                <div>Overall Rating</div>
+                <strong>{reviewData.totalReviews} total ratings</strong>
+              </div>
+            </div>
+          </div>
+
+          {reviewData.reviews.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 16px', background: '#F8FAF9', borderRadius: '12px', border: '1px solid #EEF3F0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🌱</div>
+              <h4 style={{ fontSize: '15px', color: '#234B3C', fontWeight: 700, margin: '0 0 4px' }}>No written reviews yet</h4>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+                Order this harvest and submit your feedback once delivered to earn community reward discounts!
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+              {reviewData.reviews.map((rev) => (
+                <div key={rev.id} style={{ background: '#FAFBFB', borderRadius: '12px', padding: '16px', border: '1px solid #EEF3F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={14}
+                          fill={star <= rev.rating ? '#EAB308' : 'none'}
+                          color={star <= rev.rating ? '#EAB308' : '#CBD5E1'}
+                        />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                      {new Date(rev.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  {rev.comment ? (
+                    <p style={{ fontSize: '13px', color: '#334155', margin: '0 0 10px', fontStyle: 'italic', lineHeight: 1.4 }}>
+                      "{rev.comment}"
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: '12.5px', color: '#94A3B8', margin: '0 0 10px' }}>
+                      Rated {rev.rating} / 5 stars
+                    </p>
+                  )}
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#234B3C' }}>
+                    ✓ {rev.userName || 'Resident'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Frequently Bought Together / Similar Produce */}
