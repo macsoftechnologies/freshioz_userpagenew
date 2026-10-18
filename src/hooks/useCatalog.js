@@ -9,9 +9,9 @@ const DELIVERY_FALLBACK = { baseFee: 25, freeDeliveryThreshold: 299, enableFreeD
 export function useCatalog() {
   const q = useQuery({
     queryKey: ['catalog'],
-    queryFn: () => apiClient('/catalog'),
-    staleTime: 5_000,
-    refetchInterval: 15_000,          // Auto-sync rates every 15s
+    queryFn: () => apiClient(`/catalog?_t=${Date.now()}`),
+    staleTime: 0,
+    refetchInterval: 5_000,           // Auto-sync rates every 5 seconds in real-time
     refetchOnWindowFocus: true,       // Auto-refresh rates whenever user returns to website tab
     refetchIntervalInBackground: false,
   });
