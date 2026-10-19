@@ -32,22 +32,28 @@ export default function OrderTrackingPage() {
     return o.userPhone === activeUser.phone || o.userId === activeUser.id;
   });
 
-  const currentLocalOrder = userOrders.find(o => o.id === orderId || o.uuid === orderId) 
-    || userOrders[0] 
-    || null;
+  const currentLocalOrder = orderId 
+    ? (userOrders.find(o => o.id === orderId || o.uuid === orderId) || null)
+    : (userOrders[0] || null);
 
   useEffect(() => {
     let isMounted = true;
     async function fetchLiveTracking() {
-      if (!activeUser) {
-        setLiveServerOrder(null);
-        return;
-      }
       const targetId = orderId || currentLocalOrder?.id || currentLocalOrder?.uuid;
       if (!targetId) return;
       setIsLoadingLive(true);
       try {
-        const trackData = await orderService.track(targetId);
+        let trackData = null;
+        if (activeUser) {
+          try {
+            trackData = await orderService.getById(targetId);
+          } catch {
+            trackData = await orderService.track(targetId);
+          }
+        } else {
+          trackData = await orderService.track(targetId);
+        }
+
         if (isMounted && trackData && trackData.id) {
           setLiveServerOrder(trackData);
         }
@@ -61,7 +67,7 @@ export default function OrderTrackingPage() {
     return () => { isMounted = false; };
   }, [activeUser?.phone, activeUser?.id, orderId, currentLocalOrder?.id, currentLocalOrder?.uuid]);
 
-  if (!activeUser) {
+  if (!activeUser && !orderId) {
     return (
       <div className="section-container" style={{ paddingTop: '40px', maxWidth: '700px', textAlign: 'center' }}>
         <div style={{ background: '#FFFFFF', padding: '48px 24px', borderRadius: '16px', border: '1.5px solid #E5ECE7', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
@@ -360,28 +366,54 @@ export default function OrderTrackingPage() {
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0F4F2' }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B' }}>{item.name}</div>
-                <div style={{ fontSize: '12px', color: '#52635A' }}>{item.qty} * {item.unit}</div>
+                <div style={{ fontSize: '12px', color: '#52635A' }}>{item.qty} × {item.unit}</div>
               </div>
               <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '14px' }}>
-                ₹{item.price * item.qty}
+                ₹{item.totalPrice !== undefined && item.totalPrice !== null ? item.totalPrice : (item.price * item.qty)}
               </div>
             </div>
           ))}
+          {(!currentOrder?.items || currentOrder.items.length === 0) && (
+            <div style={{ fontSize: '13px', color: '#64748B', padding: '12px 0' }}>
+              {currentOrder?.itemsCount ? `${currentOrder.itemsCount} produce item(s) included` : 'No item details available'}
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '10px', fontSize: '15px', fontWeight: 800, color: '#234B3C', borderTop: '1px solid #E2E8F0' }}>
-          <div>
-            <span>{(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') ? (
-              (currentOrder?.paymentStatus === 'PAID' || currentOrder?.codPaymentReceived) ? (
-                <span style={{ color: '#166534' }}>Total Paid (Cash on Delivery - Collected ✅)</span>
+        {/* Pricing Breakdown */}
+        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {currentOrder?.subtotal !== undefined && currentOrder?.subtotal > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748B' }}>
+              <span>Items Subtotal</span>
+              <span>₹{currentOrder.subtotal}</span>
+            </div>
+          )}
+          {currentOrder?.bulkSavings !== undefined && currentOrder?.bulkSavings > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#059669', fontWeight: 600 }}>
+              <span>Volume Bulk Savings</span>
+              <span>-₹{currentOrder.bulkSavings}</span>
+            </div>
+          )}
+          {currentOrder?.deliveryFee !== undefined && currentOrder?.deliveryFee > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748B' }}>
+              <span>Delivery Fee</span>
+              <span>₹{currentOrder.deliveryFee}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', fontSize: '15px', fontWeight: 800, color: '#234B3C', borderTop: '1px dashed #E2E8F0', marginTop: '4px' }}>
+            <div>
+              <span>{(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') ? (
+                (currentOrder?.paymentStatus === 'PAID' || currentOrder?.codPaymentReceived) ? (
+                  <span style={{ color: '#166534' }}>Total Paid (Cash on Delivery - Collected ✅)</span>
+                ) : (
+                  <span style={{ color: '#B91C1C' }}>Amount Due on Delivery (Cash / UPI)</span>
+                )
               ) : (
-                <span style={{ color: '#B91C1C' }}>Amount Due on Delivery (Cash / UPI)</span>
-              )
-            ) : (
-              <span>Total Paid ({currentOrder?.paymentMethod || 'Online'})</span>
-            )}</span>
+                <span>Total Paid ({currentOrder?.paymentMethod || 'Online'})</span>
+              )}</span>
+            </div>
+            <span style={{ fontSize: '18px' }}>₹{currentOrder?.totalAmount ?? '—'}</span>
           </div>
-          <span style={{ fontSize: '17px' }}>₹{currentOrder?.totalAmount}</span>
         </div>
 
         {!['DELIVERED', 'CANCELLED'].includes(currentOrder?.status) && (
