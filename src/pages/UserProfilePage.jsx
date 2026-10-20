@@ -16,8 +16,10 @@ import {
   Star,
   Gift,
   Copy,
-  Check,
-  MessageSquare
+  MessageSquare,
+  MapPin,
+  Lock,
+  Building2
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
@@ -32,10 +34,17 @@ export default function UserProfilePage() {
     activeUser, 
     requestLogout,
     store, 
+    approvedSocieties = [],
     setIsAuthModalOpen,
     addToCart,
     setIsCartOpen
   } = useStore();
+
+  const userSociety = (approvedSocieties || []).find(s => 
+    (activeUser?.societyId && s.id === activeUser.societyId) ||
+    (activeUser?.societyName && s.name?.toLowerCase() === activeUser.societyName?.toLowerCase())
+  ) || null;
+  const societyFullAddress = activeUser?.address || userSociety?.address || 'APMC Delivery Cluster Drop Point';
 
   // Status sub-filter for Orders tab
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'COMPLETED' | 'CANCELLED'
@@ -373,34 +382,34 @@ export default function UserProfilePage() {
   };
 
   return (
-    <div className="section-container" style={{ paddingTop: '24px', paddingBottom: '60px', maxWidth: '880px' }}>
+    <div className="section-container" style={{ paddingTop: '12px', paddingBottom: '40px', maxWidth: '880px' }}>
       {/* Top User Profile Header Banner */}
       <div style={{
         background: '#FFFFFF',
-        borderRadius: '22px',
+        borderRadius: '18px',
         border: '1.5px solid #E5ECE7',
-        padding: '24px 28px',
-        marginBottom: '20px',
+        padding: '16px 22px',
+        marginBottom: '14px',
         boxShadow: '0 4px 16px rgba(21, 34, 27, 0.04)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '14px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{
-            width: '64px',
-            height: '64px',
+            width: '56px',
+            height: '56px',
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #234B3C 0%, #173328 100%)',
             color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '26px',
+            fontSize: '24px',
             fontWeight: 800,
-            boxShadow: '0 6px 14px rgba(35, 75, 60, 0.25)',
+            boxShadow: '0 4px 12px rgba(35, 75, 60, 0.25)',
             flexShrink: 0
           }}>
             {activeUser.name?.[0]?.toUpperCase() || 'U'}
@@ -408,7 +417,7 @@ export default function UserProfilePage() {
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '23px', fontWeight: 800, color: '#15221B', letterSpacing: '-0.3px', margin: 0 }}>
+              <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#15221B', letterSpacing: '-0.3px', margin: 0 }}>
                 {activeUser.name}
               </h1>
               <span style={{
@@ -426,12 +435,17 @@ export default function UserProfilePage() {
               </span>
             </div>
 
-            <div style={{ fontSize: '13.5px', color: '#52635A', marginTop: '3px' }}>
+            <div style={{ fontSize: '13px', color: '#52635A', marginTop: '2px' }}>
               +91 {activeUser.phone} {activeUser.email ? `• ${activeUser.email}` : ''}
             </div>
 
-            <div style={{ fontSize: '12.5px', color: '#234B3C', fontWeight: 600, marginTop: '4px' }}>
-              🏢 {activeUser.societyName || 'Greenfield Heights'} ({activeUser.flatNo || 'Tower B - Flat 402'})
+            <div style={{ fontSize: '12px', color: '#234B3C', fontWeight: 600, marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span>🏢 {activeUser.societyName || 'Greenfield Heights'} ({activeUser.flatNo || 'Tower B - Flat 402'})</span>
+              <span style={{ color: '#94A3B8' }}>•</span>
+              <span style={{ color: '#475569', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <MapPin size={12} color="#059669" />
+                {societyFullAddress}
+              </span>
             </div>
           </div>
         </div>
@@ -1450,37 +1464,37 @@ export default function UserProfilePage() {
 
       {/* TAB 3: PROFILE & SOCIETY DETAILS */}
       {activeTab === 'profile' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Personal Resident Details */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '20px',
+            borderRadius: '16px',
             border: '1.5px solid #E5ECE7',
-            padding: '24px 28px'
+            padding: '18px 22px'
           }}>
-            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#15221B', marginBottom: '14px' }}>
               Resident Personal Information
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Full Name</label>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#15221B', marginTop: '4px' }}>{activeUser.name}</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Full Name</label>
+                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>{activeUser.name}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Registered Mobile</label>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#15221B', marginTop: '4px' }}>+91 {activeUser.phone}</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Registered Mobile</label>
+                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>+91 {activeUser.phone}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Email Address</label>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#15221B', marginTop: '4px' }}>{activeUser.email || 'Not provided'}</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Email Address</label>
+                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>{activeUser.email || 'Not provided'}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Member Status</label>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#234B3C', marginTop: '4px' }}>Active Community Resident</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Member Status</label>
+                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#234B3C', marginTop: '3px' }}>Active Community Resident</div>
               </div>
             </div>
           </div>
@@ -1488,33 +1502,78 @@ export default function UserProfilePage() {
           {/* Society & Drop Desk Details */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '20px',
+            borderRadius: '16px',
             border: '1.5px solid #E5ECE7',
-            padding: '24px 28px'
+            padding: '18px 22px'
           }}>
-            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#15221B', marginBottom: '14px' }}>
               Registered Society & Delivery Point
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Apartment / Hostel Name</label>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#15221B', marginTop: '4px' }}>{activeUser.societyName}</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Apartment / Hostel Name</label>
+                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>{activeUser.societyName || 'Assigned Society'}</span>
+                  {userSociety?.type && (
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      padding: '1px 6px',
+                      borderRadius: '4px',
+                      background: userSociety.type === 'HOSTEL' ? '#FEF3C7' : '#ECFDF5',
+                      color: userSociety.type === 'HOSTEL' ? '#B45309' : '#047857'
+                    }}>
+                      {userSociety.type === 'HOSTEL' ? 'HOSTEL' : 'APARTMENT'}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Wing / Flat Number</label>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#15221B', marginTop: '4px' }}>{activeUser.flatNo}</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Wing / Flat Number</label>
+                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>{activeUser.flatNo || 'Flat/Room'}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Preferred Morning Slot</label>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#234B3C', marginTop: '4px' }}>06:30 AM – 08:30 AM (Next Day)</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Preferred Morning Slot</label>
+                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#234B3C', marginTop: '3px' }}>06:30 AM – 08:30 AM (Next Day)</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Society Collection Point</label>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#234B3C', marginTop: '4px' }}>Main Security Gate / Lobby Drop Desk</div>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Society Collection Point</label>
+                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#234B3C', marginTop: '3px' }}>Main Security Gate / Lobby Drop Desk</div>
+              </div>
+
+              {/* Complete Verified Delivery Address Card */}
+              <div style={{ gridColumn: '1 / -1', marginTop: '2px' }}>
+                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Verified Society Delivery Hub Address
+                </label>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  background: '#F8FAFC',
+                  border: '1.5px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  marginTop: '6px',
+                  fontSize: '13px',
+                  color: '#1E293B',
+                  lineHeight: 1.5
+                }}>
+                  <MapPin size={18} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#0F172A' }}>
+                      {societyFullAddress}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                      <Lock size={11} color="#059669" />
+                      <span>Verified Delivery Hub (All dawn farm-fresh produce is dropped here for security / doorstep handover)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
