@@ -46,7 +46,7 @@ export default function AppFooter() {
 
           <div className="pillar-item">
             <div className="pillar-icon-box">
-              <Package size={20} color="#234B3C" />
+              <Package size={20} color="#F59E0B" />
             </div>
             <div>
               <div className="pillar-title">Volume Bulk Discounts</div>

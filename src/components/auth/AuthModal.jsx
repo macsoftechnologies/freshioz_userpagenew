@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Check, 
@@ -48,7 +48,7 @@ export default function AuthModal() {
     name: '',
     phone: '',
     email: '',
-    societyId: selectedSociety?.id || approvedSocieties[0]?.id || '',
+    societyId: selectedSociety?.id || '',
     flatNo: '',
     password: '',
     confirmPassword: '',
@@ -64,13 +64,24 @@ export default function AuthModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Searchable Society Combobox States
+  const societyDropdownRef = useRef(null);
   const [societySearchTerm, setSocietySearchTerm] = useState('');
   const [isSocietyDropdownOpen, setIsSocietyDropdownOpen] = useState(false);
-  const [isChangingSociety, setIsChangingSociety] = useState(false);
+
+  // Close society dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (societyDropdownRef.current && !societyDropdownRef.current.contains(event.target)) {
+        setIsSocietyDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!isAuthModalOpen) return null;
 
-  const currentSelectedSociety = approvedSocieties.find(s => s.id === registerData.societyId) || approvedSocieties[0];
+  const currentSelectedSociety = approvedSocieties.find(s => s.id === registerData.societyId) || null;
 
   const filteredSocieties = approvedSocieties.filter(soc => {
     if (!societySearchTerm.trim()) return true;
@@ -219,6 +230,11 @@ export default function AuthModal() {
       if (existingEmail) {
         errors.email = 'An account with this email already exists. Please Sign In.';
       }
+    }
+
+    // 3.5 Apartment / Hostel Selection
+    if (!registerData.societyId) {
+      errors.societyId = 'Please select your apartment or hostel';
     }
 
     // 4. Flat / Room
@@ -528,160 +544,91 @@ export default function AuthModal() {
                 </button>
               </div>
 
-              {currentSelectedSociety && !isChangingSociety ? (
-                /* Selected Society & Read-Only Locked Address Card */
-                <div style={{
-                  background: '#F8FAFC',
-                  border: '1.5px solid #CBD5E1',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <Building2 size={16} color="#059669" />
-                      <span style={{ fontWeight: 800, fontSize: '14px', color: '#0F172A' }}>
-                        {currentSelectedSociety.name}
-                      </span>
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: 800,
-                        padding: '2px 7px',
-                        borderRadius: '4px',
-                        background: currentSelectedSociety.type === 'HOSTEL' ? '#FEF3C7' : '#ECFDF5',
-                        color: currentSelectedSociety.type === 'HOSTEL' ? '#B45309' : '#047857'
-                      }}>
-                        {currentSelectedSociety.type === 'HOSTEL' ? 'HOSTEL' : 'APARTMENT'}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsChangingSociety(true);
-                        setIsSocietyDropdownOpen(true);
-                        setSocietySearchTerm('');
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#059669',
-                        fontWeight: 700,
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        padding: '2px 6px',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      Change
-                    </button>
-                  </div>
-
-                  {/* Non-editable Locked Address Display */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '8px',
-                    background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: '8px',
-                    padding: '8px 10px',
-                    fontSize: '12px',
-                    color: '#475569',
-                    lineHeight: 1.4
-                  }}>
-                    <MapPin size={15} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: '#1E293B' }}>
-                        {currentSelectedSociety.address || 'APMC Delivery Cluster Drop Point'}
-                      </div>
-                      <div style={{ fontSize: '10.5px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                        <Lock size={10} color="#059669" />
-                        <span>Verified Society Delivery Hub (Read-only address)</span>
-                      </div>
-                    </div>
+              {/* Always-Visible Searchable Dropdown */}
+              <div ref={societyDropdownRef} style={{ position: 'relative' }}>
+                <div 
+                  className={`modern-input-wrapper ${fieldErrors.societyId ? 'has-error' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => setIsSocietyDropdownOpen(prev => !prev)}
+                >
+                  <Building2 size={16} className="input-prefix-icon" color={currentSelectedSociety ? '#059669' : '#64748B'} />
+                  <input
+                    type="text"
+                    className="modern-text-input"
+                    placeholder="Search or select your apartment or hostel..."
+                    value={isSocietyDropdownOpen ? societySearchTerm : (currentSelectedSociety?.name || societySearchTerm)}
+                    onFocus={() => {
+                      setIsSocietyDropdownOpen(true);
+                      setSocietySearchTerm('');
+                    }}
+                    onChange={(e) => {
+                      setSocietySearchTerm(e.target.value);
+                      setIsSocietyDropdownOpen(true);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ flex: 1, paddingRight: '36px' }}
+                  />
+                  <div 
+                    style={{ 
+                      position: 'absolute', 
+                      right: '12px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)', 
+                      pointerEvents: 'none',
+                      color: '#64748B',
+                      transition: 'transform 0.2s ease',
+                      transformOrigin: 'center'
+                    }}
+                  >
+                    <ChevronDown size={17} style={{ transform: isSocietyDropdownOpen ? 'rotate(180deg)' : 'none' }} />
                   </div>
                 </div>
-              ) : (
-                /* Searchable Society Input with Recommendations */
-                <div style={{ position: 'relative' }}>
-                  <div className="modern-input-wrapper">
-                    <Search size={15} className="input-prefix-icon" color="#64748B" />
-                    <input
-                      type="text"
-                      className="modern-text-input"
-                      placeholder="Search apartment, hostel, or society..."
-                      value={societySearchTerm}
-                      onFocus={() => setIsSocietyDropdownOpen(true)}
-                      onChange={(e) => {
-                        setSocietySearchTerm(e.target.value);
-                        setIsSocietyDropdownOpen(true);
-                      }}
-                      autoFocus={isChangingSociety}
-                    />
-                    {isChangingSociety && currentSelectedSociety && (
-                      <button
-                        type="button"
-                        onClick={() => setIsChangingSociety(false)}
-                        style={{
-                          position: 'absolute',
-                          right: '10px',
-                          top: '10px',
-                          background: 'none',
-                          border: 'none',
-                          color: '#64748B',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
 
-                  {/* Recommendations dropdown */}
-                  {isSocietyDropdownOpen && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 4px)',
-                      left: 0,
-                      right: 0,
-                      background: '#FFFFFF',
-                      borderRadius: '12px',
-                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
-                      border: '1.5px solid #CBD5E1',
-                      maxHeight: '220px',
-                      overflowY: 'auto',
-                      zIndex: 9999
-                    }}>
-                      {filteredSocieties.length === 0 ? (
-                        <div style={{ padding: '14px', textAlign: 'center', color: '#64748B', fontSize: '12.5px' }}>
-                          No society found matching "{societySearchTerm}".
-                          <div style={{ marginTop: '6px' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsAuthModalOpen(false);
-                                setIsSocietyRequestModalOpen(true);
-                              }}
-                              style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline', fontSize: '12px' }}
-                            >
-                              + Request to add your society
-                            </button>
-                          </div>
+                {fieldErrors.societyId && <span className="modern-error-hint">{fieldErrors.societyId}</span>}
+
+                {/* Recommendations Dropdown List */}
+                {isSocietyDropdownOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    background: '#FFFFFF',
+                    borderRadius: '12px',
+                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
+                    border: '1.5px solid #CBD5E1',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    zIndex: 9999
+                  }}>
+                    {filteredSocieties.length === 0 ? (
+                      <div style={{ padding: '14px', textAlign: 'center', color: '#64748B', fontSize: '12.5px' }}>
+                        No society found matching "{societySearchTerm}".
+                        <div style={{ marginTop: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAuthModalOpen(false);
+                              setIsSocietyRequestModalOpen(true);
+                            }}
+                            style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline', fontSize: '12px' }}
+                          >
+                            + Request to add your society
+                          </button>
                         </div>
-                      ) : (
-                        filteredSocieties.map(soc => (
+                      </div>
+                    ) : (
+                      filteredSocieties.map(soc => {
+                        const isChosen = soc.id === registerData.societyId;
+                        return (
                           <div
                             key={soc.id}
-                            onClick={() => {
-                              setRegisterData({ ...registerData, societyId: soc.id });
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRegisterData(prev => ({ ...prev, societyId: soc.id }));
                               setIsSocietyDropdownOpen(false);
-                              setIsChangingSociety(false);
                               setSocietySearchTerm('');
+                              if (fieldErrors.societyId) setFieldErrors(prev => ({ ...prev, societyId: null }));
                             }}
                             style={{
                               padding: '10px 14px',
@@ -690,18 +637,22 @@ export default function AuthModal() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
+                              background: isChosen ? '#F0FDF4' : 'transparent',
                               transition: 'background 0.15s ease'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            onMouseEnter={(e) => { if (!isChosen) e.currentTarget.style.background = '#F8FAFC'; }}
+                            onMouseLeave={(e) => { if (!isChosen) e.currentTarget.style.background = 'transparent'; }}
                           >
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: '13px', color: '#0F172A' }}>
-                                {soc.name}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: '13px', color: isChosen ? '#059669' : '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>{soc.name}</span>
+                                {isChosen && <Check size={14} color="#059669" />}
                               </div>
                               <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <MapPin size={11} color="#94A3B8" />
-                                <span>{soc.address ? (soc.address.length > 55 ? `${soc.address.slice(0, 55)}...` : soc.address) : 'Bangalore'}</span>
+                                <MapPin size={11} color="#94A3B8" style={{ flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {soc.address ? (soc.address.length > 55 ? `${soc.address.slice(0, 55)}...` : soc.address) : 'Bangalore'}
+                                </span>
                               </div>
                             </div>
                             <span style={{
@@ -711,15 +662,44 @@ export default function AuthModal() {
                               borderRadius: '4px',
                               background: soc.type === 'HOSTEL' ? '#FEF3C7' : '#ECFDF5',
                               color: soc.type === 'HOSTEL' ? '#B45309' : '#047857',
-                              flexShrink: 0
+                              flexShrink: 0,
+                              marginLeft: '8px'
                             }}>
                               {soc.type === 'HOSTEL' ? 'HOSTEL' : 'APARTMENT'}
                             </span>
                           </div>
-                        ))
-                      )}
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Verified Locked Address Display Card (Shown directly when an apartment is selected) */}
+              {currentSelectedSociety && (
+                <div style={{
+                  marginTop: '8px',
+                  background: '#F8FAFC',
+                  border: '1.5px solid #CBD5E1',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  fontSize: '12px',
+                  color: '#475569',
+                  lineHeight: 1.4
+                }}>
+                  <MapPin size={15} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: '#1E293B' }}>
+                      {currentSelectedSociety.address || 'APMC Delivery Cluster Drop Point'}
                     </div>
-                  )}
+                    <div style={{ fontSize: '10.5px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                      <Lock size={11} color="#059669" />
+                      <span>Verified Society Delivery Hub (Read-only address)</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
