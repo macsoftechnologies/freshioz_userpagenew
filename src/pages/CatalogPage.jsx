@@ -15,11 +15,6 @@ export default function CatalogPage() {
   const searchQuery = searchParams.get('q') || '';
 
   const [loading, setLoading] = useState(false);
-  const [localSearch, setLocalSearch] = useState(searchQuery);
-
-  useEffect(() => {
-    setLocalSearch(searchQuery);
-  }, [searchQuery]);
 
   // Dynamically pulled from Master Data catalog categories
   const categories = [
@@ -39,16 +34,6 @@ export default function CatalogPage() {
       return next;
     });
     setTimeout(() => setLoading(false), 300);
-  };
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (localSearch.trim()) next.set('q', localSearch.trim());
-      else next.delete('q');
-      return next;
-    });
   };
 
   const filteredProducts = (store.products || []).filter(p => {
@@ -93,34 +78,43 @@ export default function CatalogPage() {
           </div>
         </div>
 
-        {/* Search Bar Input */}
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '8px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={16} color="#83968D" style={{ position: 'absolute', left: '13px', top: '12px' }} />
-            <input
-              type="text"
-              className="form-input-control"
-              style={{ paddingLeft: '38px', height: '40px', borderRadius: '9999px', fontSize: '13px' }}
-              placeholder="Filter by name (e.g. Tomato, Spinach, Onion, Apple)..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-            />
+        {/* Active Search Query Pill (if searched via header) */}
+        {searchQuery && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#F0FDF4',
+            border: '1px solid #BBF7D0',
+            padding: '7px 14px',
+            borderRadius: '9999px',
+            fontSize: '13px',
+            color: '#166534'
+          }}>
+            <span>Filtered by: <strong>"{searchQuery}"</strong> ({filteredProducts.length} items)</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchParams(prev => {
+                  const next = new URLSearchParams(prev);
+                  next.delete('q');
+                  return next;
+                });
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#166534',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: '12px',
+                padding: '2px 6px'
+              }}
+            >
+              Clear Search ✕
+            </button>
           </div>
-          <button
-            type="submit"
-            style={{
-              background: '#234B3C',
-              color: '#FFF',
-              fontWeight: 700,
-              fontSize: '13px',
-              padding: '0 18px',
-              borderRadius: '9999px',
-              height: '40px'
-            }}
-          >
-            Search
-          </button>
-        </form>
+        )}
 
         {/* Category Pills */}
         <div style={{
@@ -204,7 +198,6 @@ export default function CatalogPage() {
             <button
               type="button"
               onClick={() => {
-                setLocalSearch('');
                 setSearchParams({});
               }}
               style={{

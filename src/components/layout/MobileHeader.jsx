@@ -1,11 +1,13 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Search, ShoppingBag, X } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
 import { useStore } from '../../context/StoreContext';
+import SearchRecommendations from '../search/SearchRecommendations';
 
 export default function MobileHeader({ searchQuery = '', onSearchChange }) {
   const { 
+    store,
     setIsMobileDrawerOpen, 
     cartItemCount, 
     cartSubtotal,
@@ -14,12 +16,7 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
   const navigate = useNavigate();
   const location = useLocation();
   const searchInputRef = useRef(null);
-
-  const handleSearchFocus = () => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  };
+  const [isSearchRecsOpen, setIsSearchRecsOpen] = useState(false);
 
   return (
     <header className="mobile-header-wrap">
@@ -39,15 +36,6 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
         <div className="mobile-right-cluster">
           <button
             type="button"
-            className="mobile-search-btn"
-            onClick={handleSearchFocus}
-            aria-label="Focus produce search"
-          >
-            <Search size={20} />
-          </button>
-
-          <button
-            type="button"
             className="mobile-cart-btn"
             onClick={() => setIsCartOpen(true)}
             aria-label="View shopping cart"
@@ -62,7 +50,7 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
       </div>
 
       {/* Modern Responsive Search Bar for Mobile & Tablet Viewports */}
-      <div style={{ padding: '0 14px 10px 14px' }}>
+      <div style={{ padding: '0 14px 10px 14px', position: 'relative' }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -78,8 +66,10 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
             type="text"
             placeholder="Search farm tomatoes, spinach, Shimla apples..."
             value={searchQuery}
+            onFocus={() => setIsSearchRecsOpen(true)}
             onChange={(e) => {
               if (onSearchChange) onSearchChange(e.target.value);
+              setIsSearchRecsOpen(true);
               if (location.pathname !== '/catalog' && e.target.value.trim().length > 0) {
                 navigate(`/catalog?q=${encodeURIComponent(e.target.value)}`);
               }
@@ -106,6 +96,16 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
             </button>
           )}
         </div>
+
+        <SearchRecommendations
+          query={searchQuery}
+          products={store.products || []}
+          isOpen={isSearchRecsOpen}
+          onClose={() => setIsSearchRecsOpen(false)}
+          onSelectQuery={(q) => {
+            if (onSearchChange) onSearchChange(q);
+          }}
+        />
       </div>
     </header>
   );

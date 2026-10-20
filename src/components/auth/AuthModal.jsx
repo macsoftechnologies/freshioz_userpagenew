@@ -16,7 +16,9 @@ import {
   ShieldCheck,
   Key,
   CheckCircle2,
-  HelpCircle
+  HelpCircle,
+  Search,
+  MapPin
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import FreshiozLogo from '../common/FreshiozLogo';
@@ -61,9 +63,23 @@ export default function AuthModal() {
   const [successToast, setSuccessToast] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Searchable Society Combobox States
+  const [societySearchTerm, setSocietySearchTerm] = useState('');
+  const [isSocietyDropdownOpen, setIsSocietyDropdownOpen] = useState(false);
+  const [isChangingSociety, setIsChangingSociety] = useState(false);
+
   if (!isAuthModalOpen) return null;
 
   const currentSelectedSociety = approvedSocieties.find(s => s.id === registerData.societyId) || approvedSocieties[0];
+
+  const filteredSocieties = approvedSocieties.filter(soc => {
+    if (!societySearchTerm.trim()) return true;
+    const q = societySearchTerm.toLowerCase();
+    const name = String(soc.name || '').toLowerCase();
+    const addr = String(soc.address || '').toLowerCase();
+    const type = String(soc.type || '').toLowerCase();
+    return name.includes(q) || addr.includes(q) || type.includes(q);
+  });
 
   // Strong Password Strength Calculator
   const calculatePasswordStrength = (pwd) => {
@@ -496,8 +512,8 @@ export default function AuthModal() {
               </div>
             </div>
 
-            {/* Select Society / Hostel */}
-            <div className="modern-form-group" style={{ marginBottom: '12px' }}>
+            {/* Select Society / Hostel with Search Recommendations & Non-Editable Verified Address */}
+            <div className="modern-form-group" style={{ marginBottom: '14px' }}>
               <div className="label-with-action-row">
                 <label className="modern-field-label">Select Apartment or Hostel *</label>
                 <button
@@ -512,21 +528,200 @@ export default function AuthModal() {
                 </button>
               </div>
 
-              <div className="modern-select-wrapper">
-                <Building2 size={15} className="input-prefix-icon" />
-                <select
-                  className="modern-select-input"
-                  value={registerData.societyId}
-                  onChange={(e) => setRegisterData({ ...registerData, societyId: e.target.value })}
-                >
-                  {approvedSocieties.map(soc => (
-                    <option key={soc.id} value={soc.id}>
-                      {soc.name} ({soc.type === 'HOSTEL' ? 'Hostel' : 'Apartment'})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={15} className="select-dropdown-arrow" />
-              </div>
+              {currentSelectedSociety && !isChangingSociety ? (
+                /* Selected Society & Read-Only Locked Address Card */
+                <div style={{
+                  background: '#F8FAFC',
+                  border: '1.5px solid #CBD5E1',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <Building2 size={16} color="#059669" />
+                      <span style={{ fontWeight: 800, fontSize: '14px', color: '#0F172A' }}>
+                        {currentSelectedSociety.name}
+                      </span>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: currentSelectedSociety.type === 'HOSTEL' ? '#FEF3C7' : '#ECFDF5',
+                        color: currentSelectedSociety.type === 'HOSTEL' ? '#B45309' : '#047857'
+                      }}>
+                        {currentSelectedSociety.type === 'HOSTEL' ? 'HOSTEL' : 'APARTMENT'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsChangingSociety(true);
+                        setIsSocietyDropdownOpen(true);
+                        setSocietySearchTerm('');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#059669',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  {/* Non-editable Locked Address Display */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    fontSize: '12px',
+                    color: '#475569',
+                    lineHeight: 1.4
+                  }}>
+                    <MapPin size={15} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: '#1E293B' }}>
+                        {currentSelectedSociety.address || 'APMC Delivery Cluster Drop Point'}
+                      </div>
+                      <div style={{ fontSize: '10.5px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                        <Lock size={10} color="#059669" />
+                        <span>Verified Society Delivery Hub (Read-only address)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Searchable Society Input with Recommendations */
+                <div style={{ position: 'relative' }}>
+                  <div className="modern-input-wrapper">
+                    <Search size={15} className="input-prefix-icon" color="#64748B" />
+                    <input
+                      type="text"
+                      className="modern-text-input"
+                      placeholder="Search apartment, hostel, or society..."
+                      value={societySearchTerm}
+                      onFocus={() => setIsSocietyDropdownOpen(true)}
+                      onChange={(e) => {
+                        setSocietySearchTerm(e.target.value);
+                        setIsSocietyDropdownOpen(true);
+                      }}
+                      autoFocus={isChangingSociety}
+                    />
+                    {isChangingSociety && currentSelectedSociety && (
+                      <button
+                        type="button"
+                        onClick={() => setIsChangingSociety(false)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '10px',
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748B',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Recommendations dropdown */}
+                  {isSocietyDropdownOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      background: '#FFFFFF',
+                      borderRadius: '12px',
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
+                      border: '1.5px solid #CBD5E1',
+                      maxHeight: '220px',
+                      overflowY: 'auto',
+                      zIndex: 9999
+                    }}>
+                      {filteredSocieties.length === 0 ? (
+                        <div style={{ padding: '14px', textAlign: 'center', color: '#64748B', fontSize: '12.5px' }}>
+                          No society found matching "{societySearchTerm}".
+                          <div style={{ marginTop: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAuthModalOpen(false);
+                                setIsSocietyRequestModalOpen(true);
+                              }}
+                              style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline', fontSize: '12px' }}
+                            >
+                              + Request to add your society
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        filteredSocieties.map(soc => (
+                          <div
+                            key={soc.id}
+                            onClick={() => {
+                              setRegisterData({ ...registerData, societyId: soc.id });
+                              setIsSocietyDropdownOpen(false);
+                              setIsChangingSociety(false);
+                              setSocietySearchTerm('');
+                            }}
+                            style={{
+                              padding: '10px 14px',
+                              borderBottom: '1px solid #F1F5F9',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              transition: 'background 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '13px', color: '#0F172A' }}>
+                                {soc.name}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <MapPin size={11} color="#94A3B8" />
+                                <span>{soc.address ? (soc.address.length > 55 ? `${soc.address.slice(0, 55)}...` : soc.address) : 'Bangalore'}</span>
+                              </div>
+                            </div>
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: soc.type === 'HOSTEL' ? '#FEF3C7' : '#ECFDF5',
+                              color: soc.type === 'HOSTEL' ? '#B45309' : '#047857',
+                              flexShrink: 0
+                            }}>
+                              {soc.type === 'HOSTEL' ? 'HOSTEL' : 'APARTMENT'}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Flat / Block No & Email */}

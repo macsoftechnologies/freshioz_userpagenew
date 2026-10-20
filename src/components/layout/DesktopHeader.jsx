@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
 import { useStore } from '../../context/StoreContext';
+import SearchRecommendations from '../search/SearchRecommendations';
 
 export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
   } = useStore();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSearchRecsOpen, setIsSearchRecsOpen] = useState(false);
   const userMenuRef = useRef(null);
 
   // Close dropdown on outside click
@@ -69,18 +71,29 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
         </div>
 
         {/* Center: Expansive & Clean Search Bar */}
-        <div className="search-bar-wrap">
+        <div className="search-bar-wrap" style={{ position: 'relative' }}>
           <Search size={18} className="search-icon-pos" />
           <input
             type="text"
             className="search-input-box"
             placeholder="Search farm tomatoes, spinach, Shimla apples, fresh harvest..."
             value={searchQuery}
+            onFocus={() => setIsSearchRecsOpen(true)}
             onChange={(e) => {
               if (onSearchChange) onSearchChange(e.target.value);
+              setIsSearchRecsOpen(true);
               if (location.pathname !== '/catalog' && e.target.value.trim().length > 0) {
                 navigate(`/catalog?q=${encodeURIComponent(e.target.value)}`);
               }
+            }}
+          />
+          <SearchRecommendations
+            query={searchQuery}
+            products={store.products || []}
+            isOpen={isSearchRecsOpen}
+            onClose={() => setIsSearchRecsOpen(false)}
+            onSelectQuery={(q) => {
+              if (onSearchChange) onSearchChange(q);
             }}
           />
         </div>
