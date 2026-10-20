@@ -101,7 +101,10 @@ export default function App() {
           <Route path="/society-portal" element={<SocietyPartnerPortalPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/tracking/:orderId" element={<OrderTrackingPage />} />
-          <Route path="/profile" element={<UserProfilePage />} />
+          <Route path="/orders" element={<UserProfilePage forcedTab="orders" />} />
+          <Route path="/history" element={<UserProfilePage forcedTab="history" />} />
+          <Route path="/rewards" element={<UserProfilePage forcedTab="rewards" />} />
+          <Route path="/profile" element={<UserProfilePage forcedTab="profile" />} />
         </Routes>
       </main>
 

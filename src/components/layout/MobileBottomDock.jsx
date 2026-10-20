@@ -1,11 +1,14 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Grid, Package, Clock, ShoppingCart } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 
 export default function MobileBottomDock() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { cartItemCount, setIsCartOpen, activeUser, setIsAuthModalOpen } = useStore();
+
+  const isOrdersActive = ['/orders', '/history', '/rewards', '/profile'].includes(location.pathname);
 
   return (
     <nav className="mobile-bottom-dock" aria-label="Mobile Navigation">
@@ -40,12 +43,12 @@ export default function MobileBottomDock() {
       {/* 4. Orders / Tracking */}
       <button
         type="button"
-        className="dock-item-btn"
+        className={`dock-item-btn ${isOrdersActive ? 'active' : ''}`}
         onClick={() => {
           if (!activeUser) {
             setIsAuthModalOpen(true);
           } else {
-            navigate('/profile');
+            navigate('/orders');
           }
         }}
       >

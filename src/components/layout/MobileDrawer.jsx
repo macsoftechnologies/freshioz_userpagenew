@@ -12,6 +12,7 @@ import {
   PlusCircle, 
   HelpCircle,
   Clock,
+  Gift,
   Download
 } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
@@ -95,18 +96,32 @@ export default function MobileDrawer() {
                 {/* Quick Account Navigation Links */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
                   <Link
-                    to="/profile?tab=orders"
+                    to="/orders"
                     onClick={() => setIsMobileDrawerOpen(false)}
                     style={{ fontSize: '12.5px', fontWeight: 700, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
                     <Package size={14} /> My Orders & Live Tracking
                   </Link>
                   <Link
-                    to="/profile?tab=history"
+                    to="/history"
                     onClick={() => setIsMobileDrawerOpen(false)}
                     style={{ fontSize: '12.5px', fontWeight: 700, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
                     <Clock size={14} /> Purchase History & Bills
+                  </Link>
+                  <Link
+                    to="/rewards"
+                    onClick={() => setIsMobileDrawerOpen(false)}
+                    style={{ fontSize: '12.5px', fontWeight: 700, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Gift size={14} /> Rewards & Discounts
+                  </Link>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMobileDrawerOpen(false)}
+                    style={{ fontSize: '12.5px', fontWeight: 700, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <User size={14} /> Profile & Society Address
                   </Link>
                 </div>
 

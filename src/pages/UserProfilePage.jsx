@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   User, 
   Clock, 
@@ -26,9 +26,43 @@ import { orderService } from '../services/orderService';
 import { discountService } from '../services/discountService';
 import { reviewService } from '../services/reviewService';
 
-export default function UserProfilePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'orders'; // 'orders' | 'history' | 'profile' | 'rewards'
+export default function UserProfilePage({ forcedTab }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Route resolution with seamless backward compatibility
+  const tabParam = searchParams.get('tab');
+  const activeTab = forcedTab || (
+    location.pathname === '/orders' ? 'orders' :
+    location.pathname === '/history' ? 'history' :
+    location.pathname === '/rewards' ? 'rewards' :
+    location.pathname === '/profile' && tabParam ? tabParam :
+    (tabParam || 'orders')
+  );
+
+  // If user visits /profile?tab=... redirect cleanly to the dedicated URL
+  useEffect(() => {
+    if (location.pathname === '/profile') {
+      const tab = searchParams.get('tab');
+      if (tab === 'orders') navigate('/orders', { replace: true });
+      else if (tab === 'history') navigate('/history', { replace: true });
+      else if (tab === 'rewards') navigate('/rewards', { replace: true });
+    }
+  }, [location.pathname, searchParams, navigate]);
+
+  // Dynamic SEO Page Titles & Bookmarking
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      document.title = 'Active Orders & Live Tracking | Freshioz';
+    } else if (activeTab === 'history') {
+      document.title = 'Purchase History & Invoices | Freshioz';
+    } else if (activeTab === 'rewards') {
+      document.title = 'Rewards & Discounts Wallet | Freshioz';
+    } else if (activeTab === 'profile') {
+      document.title = 'Resident Profile & Delivery Address | Freshioz';
+    }
+  }, [activeTab]);
 
   const { 
     activeUser, 
@@ -383,74 +417,181 @@ export default function UserProfilePage() {
 
   return (
     <div className="section-container" style={{ paddingTop: '12px', paddingBottom: '40px', maxWidth: '880px' }}>
-      {/* Top User Profile Header Banner */}
+      {/* Sleek Segmented Control Navigation Switcher */}
       <div style={{
-        background: '#FFFFFF',
-        borderRadius: '18px',
-        border: '1.5px solid #E5ECE7',
-        padding: '16px 22px',
-        marginBottom: '14px',
-        boxShadow: '0 4px 16px rgba(21, 34, 27, 0.04)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '14px'
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '6px',
+        background: '#F1F5F3',
+        padding: '4px',
+        borderRadius: '12px',
+        marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #234B3C 0%, #173328 100%)',
-            color: '#FFFFFF',
+        <button
+          type="button"
+          onClick={() => navigate('/orders')}
+          style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: 800,
-            boxShadow: '0 4px 12px rgba(35, 75, 60, 0.25)',
-            flexShrink: 0
+            gap: '6px',
+            padding: '8px 4px',
+            borderRadius: '9px',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: activeTab === 'orders' ? 800 : 600,
+            cursor: 'pointer',
+            background: activeTab === 'orders' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'orders' ? '#234B3C' : '#52635A',
+            boxShadow: activeTab === 'orders' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Package size={15} />
+          <span>Orders</span>
+          {pendingOrders.length > 0 && (
+            <span style={{
+              background: activeTab === 'orders' ? '#234B3C' : '#CBD5E1',
+              color: activeTab === 'orders' ? '#FFF' : '#1E293B',
+              fontSize: '10.5px',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {pendingOrders.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/history')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 4px',
+            borderRadius: '9px',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: activeTab === 'history' ? 800 : 600,
+            cursor: 'pointer',
+            background: activeTab === 'history' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'history' ? '#234B3C' : '#52635A',
+            boxShadow: activeTab === 'history' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Clock size={15} />
+          <span>History</span>
+          <span style={{
+            background: '#E2E8F0',
+            color: '#475569',
+            fontSize: '10.5px',
+            padding: '1px 6px',
+            borderRadius: '9999px',
+            fontWeight: 700
           }}>
-            {activeUser.name?.[0]?.toUpperCase() || 'U'}
-          </div>
+            {completedOrders.length}
+          </span>
+        </button>
 
+        <button
+          type="button"
+          onClick={() => navigate('/rewards')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 4px',
+            borderRadius: '9px',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: activeTab === 'rewards' ? 800 : 600,
+            cursor: 'pointer',
+            background: activeTab === 'rewards' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'rewards' ? '#234B3C' : '#52635A',
+            boxShadow: activeTab === 'rewards' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Gift size={15} />
+          <span>Rewards</span>
+          {discounts.filter(d => d.status === 'ACTIVE').length > 0 && (
+            <span style={{
+              background: '#059669',
+              color: '#FFF',
+              fontSize: '10.5px',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {discounts.filter(d => d.status === 'ACTIVE').length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '8px 4px',
+            borderRadius: '9px',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: activeTab === 'profile' ? 800 : 600,
+            cursor: 'pointer',
+            background: activeTab === 'profile' ? '#FFFFFF' : 'transparent',
+            color: activeTab === 'profile' ? '#234B3C' : '#52635A',
+            boxShadow: activeTab === 'profile' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <User size={15} />
+          <span>Profile</span>
+        </button>
+      </div>
+
+      {/* Orders Tab Title Bar (Directly Above-the-Fold) */}
+      {activeTab === 'orders' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '14px',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#15221B', letterSpacing: '-0.3px', margin: 0 }}>
-                {activeUser.name}
-              </h1>
-              <span style={{
-                background: '#EBF7E5',
-                color: '#234B3C',
-                fontSize: '11px',
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: '9999px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}>
-                <CheckCircle2 size={12} color="#78B159" /> Verified Resident
-              </span>
-            </div>
-
-            <div style={{ fontSize: '13px', color: '#52635A', marginTop: '2px' }}>
-              +91 {activeUser.phone} {activeUser.email ? `• ${activeUser.email}` : ''}
-            </div>
-
-            <div style={{ fontSize: '12px', color: '#234B3C', fontWeight: 600, marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <span>🏢 {activeUser.societyName || 'Greenfield Heights'} ({activeUser.flatNo || 'Tower B - Flat 402'})</span>
-              <span style={{ color: '#94A3B8' }}>•</span>
-              <span style={{ color: '#475569', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                <MapPin size={12} color="#059669" />
-                {societyFullAddress}
-              </span>
-            </div>
+            <h1 style={{ fontSize: '19px', fontWeight: 800, color: '#15221B', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Active Orders & Live Tracking</span>
+              {pendingOrders.length > 0 && (
+                <span style={{
+                  background: '#EBF7E5',
+                  color: '#234B3C',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: '9999px'
+                }}>
+                  {pendingOrders.length} Live
+                </span>
+              )}
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#52635A' }}>
+              Dawn farm harvest batching, van dispatch, and society drop timeline.
+            </p>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             type="button"
             onClick={() => {
@@ -468,188 +609,72 @@ export default function UserProfilePage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '9px 18px',
+              padding: '6px 14px',
               borderRadius: '9999px',
-              background: '#EBF2EE',
+              background: '#FFFFFF',
               border: '1.5px solid #C8DBD0',
               color: '#234B3C',
-              fontWeight: 800,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              fontWeight: 700,
+              fontSize: '12px',
+              cursor: 'pointer'
             }}
-            title="Share feedback about the Freshioz website"
           >
-            <MessageSquare size={15} />
+            <MessageSquare size={13} />
             <span>Website Feedback</span>
           </button>
+        </div>
+      )}
 
-          {/* Prominent High-Visibility Logout Button */}
+      {/* History Tab Title Bar */}
+      {activeTab === 'history' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '14px',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            <h1 style={{ fontSize: '19px', fontWeight: 800, color: '#15221B', margin: 0 }}>
+              Past Deliveries & Invoices
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#52635A' }}>
+              Completed society drop deliveries with 1-click reorder and produce quality ratings.
+            </p>
+          </div>
           <button
             type="button"
-            onClick={() => requestLogout('USER')}
+            onClick={() => {
+              const existing = myReviews.find(r => r.type === 'WEBSITE');
+              if (existing) {
+                setWebsiteRating(existing.rating || 5);
+                setWebsiteComment(existing.comment || '');
+              } else {
+                setWebsiteRating(5);
+                setWebsiteComment('');
+              }
+              setIsWebsiteReviewOpen(true);
+            }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px',
-              padding: '9px 18px',
+              gap: '6px',
+              padding: '6px 14px',
               borderRadius: '9999px',
-              background: '#FFF1F2',
-              border: '1.5px solid #FFE4E6',
-              color: '#E11D48',
-              fontWeight: 800,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              background: '#FFFFFF',
+              border: '1.5px solid #C8DBD0',
+              color: '#234B3C',
+              fontWeight: 700,
+              fontSize: '12px',
+              cursor: 'pointer'
             }}
-            title="Sign out of your Freshioz account"
           >
-            <LogOut size={16} />
-            <span>Logout Account</span>
+            <MessageSquare size={13} />
+            <span>Website Feedback</span>
           </button>
         </div>
-      </div>
-
-      {/* Top 4 Navigation Tabs: Orders, History, Profile, Rewards */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        borderBottom: '2px solid #E5ECE7',
-        marginBottom: '24px',
-        paddingBottom: '2px',
-        overflowX: 'auto'
-      }}>
-        <button
-          type="button"
-          onClick={() => setSearchParams({ tab: 'orders' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            fontSize: '14px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            color: activeTab === 'orders' ? '#234B3C' : '#52635A',
-            borderBottom: activeTab === 'orders' ? '3px solid #234B3C' : '3px solid transparent',
-            marginBottom: '-4px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <Package size={17} />
-          <span>My Orders & Live Tracking</span>
-          {pendingOrders.length > 0 && (
-            <span style={{
-              background: '#234B3C',
-              color: '#FFF',
-              fontSize: '11px',
-              padding: '1px 7px',
-              borderRadius: '9999px',
-              fontWeight: 800
-            }}>
-              {pendingOrders.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSearchParams({ tab: 'history' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            fontSize: '14px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            color: activeTab === 'history' ? '#234B3C' : '#52635A',
-            borderBottom: activeTab === 'history' ? '3px solid #234B3C' : '3px solid transparent',
-            marginBottom: '-4px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <Clock size={17} />
-          <span>Purchase History</span>
-          <span style={{
-            background: '#F0F4F2',
-            color: '#52635A',
-            fontSize: '11px',
-            padding: '1px 7px',
-            borderRadius: '9999px',
-            fontWeight: 700
-          }}>
-            {completedOrders.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSearchParams({ tab: 'rewards' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            fontSize: '14px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            color: activeTab === 'rewards' ? '#234B3C' : '#52635A',
-            borderBottom: activeTab === 'rewards' ? '3px solid #234B3C' : '3px solid transparent',
-            marginBottom: '-4px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <Gift size={17} />
-          <span>Rewards & Discounts</span>
-          {discounts.filter(d => d.status === 'ACTIVE').length > 0 && (
-            <span style={{
-              background: '#059669',
-              color: '#FFF',
-              fontSize: '11px',
-              padding: '1px 7px',
-              borderRadius: '9999px',
-              fontWeight: 800
-            }}>
-              {discounts.filter(d => d.status === 'ACTIVE').length} Active
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSearchParams({ tab: 'profile' })}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            border: 'none',
-            background: 'none',
-            fontSize: '14px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            color: activeTab === 'profile' ? '#234B3C' : '#52635A',
-            borderBottom: activeTab === 'profile' ? '3px solid #234B3C' : '3px solid transparent',
-            marginBottom: '-4px',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <User size={17} />
-          <span>My Profile & Society Details</span>
-        </button>
-      </div>
+      )}
 
       {/* TAB 1: ORDERS & LIVE TRACKING */}
       {activeTab === 'orders' && (
@@ -1462,39 +1487,150 @@ export default function UserProfilePage() {
         );
       })()}
 
-      {/* TAB 3: PROFILE & SOCIETY DETAILS */}
+      {/* TAB 3: RESIDENT PROFILE & DELIVERY ADDRESS */}
       {activeTab === 'profile' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Top Resident Header Card */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            border: '1.5px solid #E5ECE7',
+            padding: '12px 18px',
+            boxShadow: '0 2px 10px rgba(21, 34, 27, 0.03)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #234B3C 0%, #173328 100%)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 800,
+                flexShrink: 0
+              }}>
+                {activeUser.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h1 style={{ fontSize: '18px', fontWeight: 800, color: '#15221B', letterSpacing: '-0.3px', margin: 0 }}>
+                    {activeUser.name}
+                  </h1>
+                  <span style={{
+                    background: '#EBF7E5',
+                    color: '#234B3C',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px'
+                  }}>
+                    <CheckCircle2 size={12} color="#78B159" /> Verified Resident
+                  </span>
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#52635A', marginTop: '1px' }}>
+                  +91 {activeUser.phone} {activeUser.email ? `• ${activeUser.email}` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const existing = myReviews.find(r => r.type === 'WEBSITE');
+                  if (existing) {
+                    setWebsiteRating(existing.rating || 5);
+                    setWebsiteComment(existing.comment || '');
+                  } else {
+                    setWebsiteRating(5);
+                    setWebsiteComment('');
+                  }
+                  setIsWebsiteReviewOpen(true);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '9999px',
+                  background: '#EBF2EE',
+                  border: '1.5px solid #C8DBD0',
+                  color: '#234B3C',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+                title="Share feedback about the Freshioz website"
+              >
+                <MessageSquare size={13} />
+                <span>Feedback</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => requestLogout('USER')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '9999px',
+                  background: '#FFF1F2',
+                  border: '1.5px solid #FFE4E6',
+                  color: '#E11D48',
+                  fontWeight: 800,
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
+                title="Sign out of your Freshioz account"
+              >
+                <LogOut size={13} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+
           {/* Personal Resident Details */}
           <div style={{
             background: '#FFFFFF',
             borderRadius: '16px',
             border: '1.5px solid #E5ECE7',
-            padding: '18px 22px'
+            padding: '14px 18px'
           }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#15221B', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#15221B', marginBottom: '10px' }}>
               Resident Personal Information
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Full Name</label>
-                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>{activeUser.name}</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Full Name</label>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#15221B', marginTop: '2px' }}>{activeUser.name}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Registered Mobile</label>
-                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>+91 {activeUser.phone}</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Registered Mobile</label>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#15221B', marginTop: '2px' }}>+91 {activeUser.phone}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Email Address</label>
-                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>{activeUser.email || 'Not provided'}</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Email Address</label>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#15221B', marginTop: '2px' }}>{activeUser.email || 'Not provided'}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Member Status</label>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#234B3C', marginTop: '3px' }}>Active Community Resident</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Member Status</label>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#234B3C', marginTop: '2px' }}>Active Community Resident</div>
               </div>
             </div>
           </div>
@@ -1504,16 +1640,16 @@ export default function UserProfilePage() {
             background: '#FFFFFF',
             borderRadius: '16px',
             border: '1.5px solid #E5ECE7',
-            padding: '18px 22px'
+            padding: '14px 18px'
           }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#15221B', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#15221B', marginBottom: '10px' }}>
               Registered Society & Delivery Point
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Apartment / Hostel Name</label>
-                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Apartment / Hostel Name</label>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#15221B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>{activeUser.societyName || 'Assigned Society'}</span>
                   {userSociety?.type && (
                     <span style={{
@@ -1531,23 +1667,23 @@ export default function UserProfilePage() {
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Wing / Flat Number</label>
-                <div style={{ fontSize: '14.5px', fontWeight: 700, color: '#15221B', marginTop: '3px' }}>{activeUser.flatNo || 'Flat/Room'}</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Wing / Flat Number</label>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#15221B', marginTop: '2px' }}>{activeUser.flatNo || 'Flat/Room'}</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Preferred Morning Slot</label>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#234B3C', marginTop: '3px' }}>06:30 AM – 08:30 AM (Next Day)</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Preferred Morning Slot</label>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#234B3C', marginTop: '2px' }}>06:30 AM – 08:30 AM (Next Day)</div>
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Society Collection Point</label>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#234B3C', marginTop: '3px' }}>Main Security Gate / Lobby Drop Desk</div>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>Society Collection Point</label>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#234B3C', marginTop: '2px' }}>Main Security Gate / Lobby Drop Desk</div>
               </div>
 
               {/* Complete Verified Delivery Address Card */}
               <div style={{ gridColumn: '1 / -1', marginTop: '2px' }}>
-                <label style={{ fontSize: '11px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: '10.5px', color: '#83968D', fontWeight: 700, textTransform: 'uppercase' }}>
                   Verified Society Delivery Hub Address
                 </label>
                 <div style={{
@@ -1557,18 +1693,18 @@ export default function UserProfilePage() {
                   background: '#F8FAFC',
                   border: '1.5px solid #CBD5E1',
                   borderRadius: '12px',
-                  padding: '12px 14px',
-                  marginTop: '6px',
+                  padding: '11px 14px',
+                  marginTop: '4px',
                   fontSize: '13px',
                   color: '#1E293B',
-                  lineHeight: 1.5
+                  lineHeight: 1.4
                 }}>
-                  <MapPin size={18} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <MapPin size={17} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#0F172A' }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: '#0F172A' }}>
                       {societyFullAddress}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
                       <Lock size={11} color="#059669" />
                       <span>Verified Delivery Hub (All dawn farm-fresh produce is dropped here for security / doorstep handover)</span>
                     </div>
@@ -1576,51 +1712,6 @@ export default function UserProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Account Actions & Logout Card */}
-          <div style={{
-            background: '#FFF5F5',
-            borderRadius: '20px',
-            border: '1.5px solid #FECDD3',
-            padding: '24px 28px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '16px'
-          }}>
-            <div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#991B1B' }}>
-                Account Session & Security
-              </div>
-              <div style={{ fontSize: '13px', color: '#7F1D1D', marginTop: '3px' }}>
-                Sign out of your device. Your saved cart and past orders will remain safe on your registered phone.
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => requestLogout('USER')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '11px 24px',
-                borderRadius: '9999px',
-                background: '#E11D48',
-                color: '#FFFFFF',
-                border: 'none',
-                fontWeight: 800,
-                fontSize: '13.5px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(225, 29, 72, 0.25)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <LogOut size={16} />
-              <span>Logout Freshioz Account</span>
-            </button>
           </div>
         </div>
       )}
@@ -1694,7 +1785,7 @@ export default function UserProfilePage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setSearchParams({ tab: 'history' })}
+                  onClick={() => navigate('/history')}
                   style={{
                     background: '#234B3C',
                     color: '#FFF',

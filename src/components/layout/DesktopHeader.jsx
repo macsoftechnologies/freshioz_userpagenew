@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Package,
   Clock,
+  Gift,
   LogOut,
   Building2
 } from 'lucide-react';
@@ -196,19 +197,19 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
 
                   <div className="user-menu-links">
                     <Link
-                      to="/profile?tab=orders"
+                      to="/orders"
                       className="user-menu-item"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
                       <Package size={17} className="menu-icon" />
                       <div className="menu-item-text">
                         <span>My Orders & Tracking</span>
-                        <small>Pending & active next-day deliveries</small>
+                        <small>Pending & active dawn deliveries</small>
                       </div>
                     </Link>
 
                     <Link
-                      to="/profile?tab=history"
+                      to="/history"
                       className="user-menu-item"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
@@ -220,14 +221,26 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
                     </Link>
 
                     <Link
-                      to="/profile?tab=profile"
+                      to="/rewards"
+                      className="user-menu-item"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <Gift size={17} className="menu-icon" />
+                      <div className="menu-item-text">
+                        <span>Rewards & Discounts</span>
+                        <small>Coupons & referral wallet</small>
+                      </div>
+                    </Link>
+
+                    <Link
+                      to="/profile"
                       className="user-menu-item"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
                       <User size={17} className="menu-icon" />
                       <div className="menu-item-text">
-                        <span>My Profile & Society</span>
-                        <small>Flat details & address preferences</small>
+                        <span>Resident Profile</span>
+                        <small>Society address & account details</small>
                       </div>
                     </Link>
                   </div>

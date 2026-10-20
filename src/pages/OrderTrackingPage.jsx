@@ -208,9 +208,15 @@ export default function OrderTrackingPage() {
       )}
 
       <div style={{ marginBottom: '20px' }}>
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#52635A', fontSize: '13px', fontWeight: 600 }}>
-          <ArrowLeft size={16} /> Back to Store
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link to="/orders" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#234B3C', fontSize: '13px', fontWeight: 700 }}>
+            <ArrowLeft size={16} /> Back to My Orders
+          </Link>
+          <span style={{ color: '#CBD5E1' }}>•</span>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#64748B', fontSize: '13px', fontWeight: 600 }}>
+            Store
+          </Link>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginTop: '6px' }}>
           <div>
             <h1 style={{ fontSize: '26px', color: '#234B3C' }}>Live Order Tracking</h1>
