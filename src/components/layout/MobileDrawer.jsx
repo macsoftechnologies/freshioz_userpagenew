@@ -259,63 +259,65 @@ export default function MobileDrawer() {
           </div>
           */}
 
-          {/* Society Selector */}
-          <div>
-            <div className="drawer-section-title">Your Society / Hostel</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {approvedSocieties.map(soc => (
+          {/* Society Selector (Only shown for guest/unauthenticated visitors before login) */}
+          {!activeUser && (
+            <div>
+              <div className="drawer-section-title">Your Society / Hostel</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {approvedSocieties.map(soc => (
+                  <button
+                    key={soc.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSocietyId(soc.id);
+                      setIsMobileDrawerOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: selectedSociety?.id === soc.id ? '#EBF2EE' : '#FAFBFB',
+                      color: selectedSociety?.id === soc.id ? '#234B3C' : '#15221B',
+                      fontWeight: selectedSociety?.id === soc.id ? 700 : 500,
+                      fontSize: '12.5px',
+                      border: '1px solid #E5ECE7'
+                    }}
+                  >
+                    <span>{soc.name}</span>
+                    {selectedSociety?.id === soc.id && (
+                      <span style={{ fontSize: '11px', color: '#78B159', fontWeight: 800 }}>ACTIVE</span>
+                    )}
+                  </button>
+                ))}
+
                 <button
-                  key={soc.id}
                   type="button"
                   onClick={() => {
-                    setSelectedSocietyId(soc.id);
                     setIsMobileDrawerOpen(false);
+                    setIsSocietyRequestModalOpen(true);
                   }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    textAlign: 'left',
-                    padding: '8px 10px',
+                    gap: '8px',
+                    padding: '9px 12px',
                     borderRadius: '8px',
-                    background: selectedSociety?.id === soc.id ? '#EBF2EE' : '#FAFBFB',
-                    color: selectedSociety?.id === soc.id ? '#234B3C' : '#15221B',
-                    fontWeight: selectedSociety?.id === soc.id ? 700 : 500,
+                    background: '#FFF5EB',
+                    color: '#F28E14',
+                    fontWeight: 700,
                     fontSize: '12.5px',
-                    border: '1px solid #E5ECE7'
+                    marginTop: '4px'
                   }}
                 >
-                  <span>{soc.name}</span>
-                  {selectedSociety?.id === soc.id && (
-                    <span style={{ fontSize: '11px', color: '#78B159', fontWeight: 800 }}>ACTIVE</span>
-                  )}
+                  <PlusCircle size={15} />
+                  <span>Request Your Society / Hostel</span>
                 </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileDrawerOpen(false);
-                  setIsSocietyRequestModalOpen(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  background: '#FFF5EB',
-                  color: '#F28E14',
-                  fontWeight: 700,
-                  fontSize: '12.5px',
-                  marginTop: '4px'
-                }}
-              >
-                <PlusCircle size={15} />
-                <span>Request Your Society / Hostel</span>
-              </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick Navigation Links */}
           <div>

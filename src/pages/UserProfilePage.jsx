@@ -101,9 +101,10 @@ export default function UserProfilePage({ forcedTab }) {
   const [myReviews, setMyReviews] = useState([]);
   const [reviewingOrder, setReviewingOrder] = useState(null);
   const [reviewActiveTab, setReviewActiveTab] = useState('PRODUCT'); // 'PRODUCT' | 'DELIVERY'
-  const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
+  const [cropRatings, setCropRatings] = useState({});
+  const [cropComments, setCropComments] = useState({});
+  const [deliveryRating, setDeliveryRating] = useState(5);
+  const [deliveryComment, setDeliveryComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewFeedbackMsg, setReviewFeedbackMsg] = useState('');
 
@@ -205,41 +206,38 @@ export default function UserProfilePage({ forcedTab }) {
     setSelectedReviewProduct(firstItem);
     setReviewFeedbackMsg('');
 
-    // Prepopulate if previously reviewed
-    const existing = myReviews.find(r => r.orderId === order.id && r.productId === (firstItem?.productId || firstItem?.id));
-    if (existing) {
-      setReviewRating(existing.rating || 5);
-      setReviewComment(existing.comment || '');
-    } else {
-      setReviewRating(5);
-      setReviewComment('');
-    }
+    // Prepopulate crop ratings & comments independently from existing reviews
+    const initialCropRatings = {};
+    const initialCropComments = {};
+    (order.items || []).forEach(item => {
+      const pid = item.productId || item.id;
+      const existing = myReviews.find(r => r.orderId === order.id && r.productId === pid);
+      initialCropRatings[pid] = existing?.rating || 5;
+      initialCropComments[pid] = existing?.comment || '';
+    });
+    setCropRatings(initialCropRatings);
+    setCropComments(initialCropComments);
+
+    // Prepopulate delivery rating & comment independently from existing review
+    const existingDelivery = myReviews.find(r => r.orderId === order.id && r.type === 'DELIVERY');
+    setDeliveryRating(existingDelivery?.rating || 5);
+    setDeliveryComment(existingDelivery?.comment || '');
   };
 
   const handleSelectProductToReview = (item) => {
     setSelectedReviewProduct(item);
     setReviewFeedbackMsg('');
-    const existing = myReviews.find(r => r.orderId === reviewingOrder?.id && r.productId === (item?.productId || item?.id));
-    if (existing) {
-      setReviewRating(existing.rating || 5);
-      setReviewComment(existing.comment || '');
-    } else {
-      setReviewRating(5);
-      setReviewComment('');
+    const pid = item.productId || item.id;
+    if (cropRatings[pid] === undefined) {
+      const existing = myReviews.find(r => r.orderId === reviewingOrder?.id && r.productId === pid);
+      setCropRatings(prev => ({ ...prev, [pid]: existing?.rating || 5 }));
+      setCropComments(prev => ({ ...prev, [pid]: existing?.comment || '' }));
     }
   };
 
   const handleSelectDeliveryTab = () => {
     setReviewActiveTab('DELIVERY');
     setReviewFeedbackMsg('');
-    const existing = myReviews.find(r => r.orderId === reviewingOrder?.id && r.type === 'DELIVERY');
-    if (existing) {
-      setReviewRating(existing.rating || 5);
-      setReviewComment(existing.comment || '');
-    } else {
-      setReviewRating(5);
-      setReviewComment('');
-    }
   };
 
   const handleSubmitOrderReview = async (e) => {
@@ -255,29 +253,31 @@ export default function UserProfilePage({ forcedTab }) {
           return;
         }
         const productId = selectedReviewProduct.productId || selectedReviewProduct.id;
+        const currentRating = cropRatings[productId] !== undefined ? cropRatings[productId] : 5;
+        const currentComment = cropComments[productId] || '';
         const existing = myReviews.find(r => r.orderId === reviewingOrder.id && r.productId === productId);
         if (existing) {
-          await reviewService.updateReview(existing.id, { rating: reviewRating, comment: reviewComment });
+          await reviewService.updateReview(existing.id, { rating: currentRating, comment: currentComment });
         } else {
           await reviewService.createReview({
             type: 'PRODUCT',
             orderId: reviewingOrder.id,
             productId,
-            rating: reviewRating,
-            comment: reviewComment
+            rating: currentRating,
+            comment: currentComment
           });
         }
         setReviewFeedbackMsg(`Thank you! Your product review for ${selectedReviewProduct.name} has been submitted for moderation.`);
       } else {
         const existing = myReviews.find(r => r.orderId === reviewingOrder.id && r.type === 'DELIVERY');
         if (existing) {
-          await reviewService.updateReview(existing.id, { rating: reviewRating, comment: reviewComment });
+          await reviewService.updateReview(existing.id, { rating: deliveryRating, comment: deliveryComment });
         } else {
           await reviewService.createReview({
             type: 'DELIVERY',
             orderId: reviewingOrder.id,
-            rating: reviewRating,
-            comment: reviewComment
+            rating: deliveryRating,
+            comment: deliveryComment
           });
         }
         setReviewFeedbackMsg('Thank you! Your delivery experience rating has been recorded.');
@@ -1988,64 +1988,73 @@ export default function UserProfilePage({ forcedTab }) {
                   </div>
                 </div>
 
-                {selectedReviewProduct && (
-                  <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#15221B', marginBottom: '8px' }}>
-                      How fresh was the {selectedReviewProduct.name}?
-                    </div>
+                {selectedReviewProduct && (() => {
+                  const currentCropId = selectedReviewProduct.productId || selectedReviewProduct.id;
+                  const currentRating = cropRatings[currentCropId] !== undefined ? cropRatings[currentCropId] : 5;
+                  const currentComment = cropComments[currentCropId] || '';
 
-                    {/* Star Rating Controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                      {[1, 2, 3, 4, 5].map((starVal) => (
-                        <button
-                          key={starVal}
-                          type="button"
-                          onClick={() => setReviewRating(starVal)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            transition: 'transform 0.1s ease'
+                  return (
+                    <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#15221B', marginBottom: '8px' }}>
+                        How fresh was the {selectedReviewProduct.name}?
+                      </div>
+
+                      {/* Star Rating Controls */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                        {[1, 2, 3, 4, 5].map((starVal) => (
+                          <button
+                            key={starVal}
+                            type="button"
+                            onClick={() => setCropRatings(prev => ({ ...prev, [currentCropId]: starVal }))}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              transition: 'transform 0.1s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          >
+                            <Star
+                              size={28}
+                              fill={starVal <= currentRating ? '#F59E0B' : '#E2E8F0'}
+                              color={starVal <= currentRating ? '#D97706' : '#CBD5E1'}
+                            />
+                          </button>
+                        ))}
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: '#92400E', marginLeft: '6px' }}>
+                          {currentRating === 5 ? '5 ★ Excellent & Crisp' : currentRating === 4 ? '4 ★ Good & Fresh' : currentRating === 3 ? '3 ★ Average' : currentRating === 2 ? '2 ★ Below Expectations' : '1 ★ Poor Quality'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                          Written Feedback (Optional):
+                        </label>
+                        <textarea
+                          value={currentComment}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCropComments(prev => ({ ...prev, [currentCropId]: val }));
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                          <Star
-                            size={28}
-                            fill={starVal <= reviewRating ? '#F59E0B' : '#E2E8F0'}
-                            color={starVal <= reviewRating ? '#D97706' : '#CBD5E1'}
-                          />
-                        </button>
-                      ))}
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: '#92400E', marginLeft: '6px' }}>
-                        {reviewRating === 5 ? '5 ★ Excellent & Crisp' : reviewRating === 4 ? '4 ★ Good & Fresh' : reviewRating === 3 ? '3 ★ Average' : reviewRating === 2 ? '2 ★ Below Expectations' : '1 ★ Poor Quality'}
-                      </span>
+                          placeholder="Tell other residents and our farm sorters about the freshness, flavor, or texture..."
+                          rows={3}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #CBD5E1',
+                            fontSize: '13px',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                            resize: 'vertical'
+                          }}
+                        />
+                      </div>
                     </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                        Written Feedback (Optional):
-                      </label>
-                      <textarea
-                        value={reviewComment}
-                        onChange={(e) => setReviewComment(e.target.value)}
-                        placeholder="Tell other residents and our farm sorters about the freshness, flavor, or texture..."
-                        rows={3}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #CBD5E1',
-                          fontSize: '13px',
-                          boxSizing: 'border-box',
-                          fontFamily: 'inherit',
-                          resize: 'vertical'
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {reviewFeedbackMsg && (
                   <div style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#065F46', padding: '10px 14px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2097,7 +2106,7 @@ export default function UserProfilePage({ forcedTab }) {
                       <button
                         key={starVal}
                         type="button"
-                        onClick={() => setReviewRating(starVal)}
+                        onClick={() => setDeliveryRating(starVal)}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -2108,13 +2117,13 @@ export default function UserProfilePage({ forcedTab }) {
                       >
                         <Star
                           size={28}
-                          fill={starVal <= reviewRating ? '#F59E0B' : '#E2E8F0'}
-                          color={starVal <= reviewRating ? '#D97706' : '#CBD5E1'}
+                          fill={starVal <= deliveryRating ? '#F59E0B' : '#E2E8F0'}
+                          color={starVal <= deliveryRating ? '#D97706' : '#CBD5E1'}
                         />
                       </button>
                     ))}
                     <span style={{ fontSize: '13px', fontWeight: 800, color: '#92400E', marginLeft: '6px' }}>
-                      {reviewRating === 5 ? '5 ★ Prompt & Well-Packed' : reviewRating === 4 ? '4 ★ Satisfactory' : reviewRating === 3 ? '3 ★ Average' : reviewRating === 2 ? '2 ★ Delayed / Damaged' : '1 ★ Unsatisfactory'}
+                      {deliveryRating === 5 ? '5 ★ Prompt & Well-Packed' : deliveryRating === 4 ? '4 ★ Satisfactory' : deliveryRating === 3 ? '3 ★ Average' : deliveryRating === 2 ? '2 ★ Delayed / Damaged' : '1 ★ Unsatisfactory'}
                     </span>
                   </div>
 
@@ -2123,8 +2132,8 @@ export default function UserProfilePage({ forcedTab }) {
                       Delivery Comments (Optional):
                     </label>
                     <textarea
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
+                      value={deliveryComment}
+                      onChange={(e) => setDeliveryComment(e.target.value)}
                       placeholder="Was the crate drop at your lobby desk on time? Did the rider follow gate delivery notes?"
                       rows={3}
                       style={{
