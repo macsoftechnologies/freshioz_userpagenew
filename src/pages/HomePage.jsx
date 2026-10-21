@@ -127,63 +127,49 @@ export default function HomePage() {
           }}
         />
 
-        {/* Split Desktop Hero: Green Botanical Card (Left) + Direct Live Products (Right) */}
-        <div className="home-hero-split-grid hero-desktop-only">
-          {/* Left Column: Signature Botanical Dark-Green Glass Card ("That Green Thing") */}
-          <div className="hero-glass-card hero-split-card">
-            <div className="hero-split-left-content">
-              <div className="hero-tag-badge">
-                <Leaf size={13} color="#78B159" />
-                <span>Next-Day Farm Harvest</span>
-              </div>
-
-              <h1 className="hero-main-title">
-                Farm-Fresh Greens Delivered to <span>{selectedSociety?.name || 'Your Society'}</span>
-              </h1>
-
-              <p className="hero-subtitle-desc">
-                Direct from morning mandis to your community doorstep by 7:00 AM. Zero dark-store storage, zero chemical waxing — 100% natural morning freshness.
-              </p>
-
-              <div className="hero-cta-group">
-                <button
-                  type="button"
-                  className="hero-primary-btn"
-                  onClick={() => {
-                    if (!activeUser) setIsAuthModalOpen(true);
-                    navigate('/catalog');
-                  }}
-                >
-                  <span>Explore Daily Harvest</span>
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Direct Live Products Above Fold */}
-          <div className="hero-split-products-panel">
-            <div className="hero-split-products-header">
-              <div className="hero-split-headline">
-                <Sparkles size={14} color="#F28E14" />
-                <span>Today's Top Mandi Picks</span>
-              </div>
-              <Link to="/catalog" className="hero-split-view-all">
-                <span>View All</span>
-                <ArrowRight size={12} />
-              </Link>
+        {/* Desktop Spacious Hero Card (>= 1024px) */}
+        <div className="hero-glass-card hero-desktop-only">
+          <div className="hero-left-content">
+            <div className="hero-tag-badge">
+              <Leaf size={14} color="#78B159" />
+              <span>Next-Day Farm Harvest</span>
             </div>
 
-            <div className="hero-split-products-grid">
-              {dailySpecials.length > 0 ? (
-                dailySpecials.slice(0, 2).map(product => (
-                  <ProductCard key={`hero_${product.id}`} product={product} />
-                ))
-              ) : (
-                <div className="hero-split-empty">
-                  <span>Loading morning harvest...</span>
-                </div>
-              )}
+            <h1 className="hero-main-title">
+              Farm-Fresh Greens Delivered to <span>{selectedSociety?.name || 'Your Society'}</span>
+            </h1>
+
+            <p className="hero-subtitle-desc">
+              Direct from morning mandis to your community doorstep by 7:00 AM. 
+              Zero dark-store storage, zero chemical waxing — 100% natural morning freshness.
+            </p>
+
+            <div className="hero-cta-group">
+              <button
+                type="button"
+                className="hero-primary-btn"
+                onClick={() => {
+                  if (!activeUser) setIsAuthModalOpen(true);
+                  navigate('/catalog');
+                }}
+              >
+                <span>Explore Daily Harvest</span>
+                <ArrowRight size={16} />
+              </button>
+
+              {/* Bulk Wholesale Crates button - Commented out for retail concentration
+              <button
+                type="button"
+                className="hero-secondary-btn"
+                onClick={() => {
+                  setIsWholesale(true);
+                  navigate('/wholesale');
+                }}
+              >
+                <Package size={16} />
+                <span>Bulk Wholesale Crates</span>
+              </button>
+              */}
             </div>
           </div>
         </div>
