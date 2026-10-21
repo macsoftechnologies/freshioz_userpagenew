@@ -127,50 +127,90 @@ export default function HomePage() {
           }}
         />
 
-        {/* Desktop Spacious Hero Card (>= 1024px) */}
-        <div className="hero-glass-card hero-desktop-only">
-          <div className="hero-left-content">
-            <div className="hero-tag-badge">
-              <Leaf size={14} color="#78B159" />
-              <span>Next-Day Farm Harvest</span>
+        {/* BigBasket-Style 4 Promo Cards Grid (Desktop >= 1024px) */}
+        <div className="promo-quad-grid hero-desktop-only">
+          {/* Card 1: Mandi Harvest */}
+          <div 
+            className="promo-card promo-card-green"
+            onClick={() => {
+              if (!activeUser) setIsAuthModalOpen(true);
+              navigate('/catalog?category=Vegetables');
+            }}
+          >
+            <div className="promo-card-text">
+              <span className="promo-badge promo-badge-green">🌿 100% Direct</span>
+              <h3 className="promo-title">Farm Harvest</h3>
+              <p className="promo-desc">Morning Mandi Picked</p>
             </div>
+            <img 
+              src="/banners/freshmarket.png" 
+              alt="Farm-Fresh Vegetables" 
+              className="promo-card-img" 
+              loading="eager"
+            />
+          </div>
 
-            <h1 className="hero-main-title">
-              Farm-Fresh Greens Delivered to <span>{selectedSociety?.name || 'Your Society'}</span>
-            </h1>
-
-            <p className="hero-subtitle-desc">
-              Direct from morning mandis to your community doorstep by 7:00 AM. 
-              Zero dark-store storage, zero chemical waxing — 100% natural morning freshness.
-            </p>
-
-            <div className="hero-cta-group">
-              <button
-                type="button"
-                className="hero-primary-btn"
-                onClick={() => {
-                  if (!activeUser) setIsAuthModalOpen(true);
-                  navigate('/catalog');
-                }}
-              >
-                <span>Explore Daily Harvest</span>
-                <ArrowRight size={16} />
-              </button>
-
-              {/* Bulk Wholesale Crates button - Commented out for retail concentration
-              <button
-                type="button"
-                className="hero-secondary-btn"
-                onClick={() => {
-                  setIsWholesale(true);
-                  navigate('/wholesale');
-                }}
-              >
-                <Package size={16} />
-                <span>Bulk Wholesale Crates</span>
-              </button>
-              */}
+          {/* Card 2: 7:00 AM Delivery */}
+          <div 
+            className="promo-card promo-card-emerald"
+            onClick={() => {
+              if (!activeUser) setIsAuthModalOpen(true);
+              navigate('/catalog');
+            }}
+          >
+            <div className="promo-card-text">
+              <span className="promo-badge promo-badge-emerald">⚡ By 7:00 AM</span>
+              <h3 className="promo-title">Dawn Drop</h3>
+              <p className="promo-desc">Doorstep Delivery</p>
             </div>
+            <img 
+              src="/banners/freshmorning.png" 
+              alt="Express Morning Delivery" 
+              className="promo-card-img" 
+              loading="eager"
+            />
+          </div>
+
+          {/* Card 3: Daily Steals */}
+          <div 
+            className="promo-card promo-card-orange"
+            onClick={() => {
+              if (!activeUser) setIsAuthModalOpen(true);
+              navigate('/catalog');
+            }}
+          >
+            <div className="promo-card-text">
+              <span className="promo-badge promo-badge-orange">🔥 Hot Deals</span>
+              <h3 className="promo-title">Daily Steals</h3>
+              <p className="promo-desc">Under ₹49 Specials</p>
+            </div>
+            <img 
+              src="/banners/glossy.png" 
+              alt="Daily Deals & Offers" 
+              className="promo-card-img" 
+              loading="eager"
+            />
+          </div>
+
+          {/* Card 4: Society Perks */}
+          <div 
+            className="promo-card promo-card-teal"
+            onClick={() => {
+              if (!activeUser) setIsAuthModalOpen(true);
+              navigate('/catalog');
+            }}
+          >
+            <div className="promo-card-text">
+              <span className="promo-badge promo-badge-teal">🏢 {selectedSociety?.name || 'Society Drop'}</span>
+              <h3 className="promo-title">Free Delivery</h3>
+              <p className="promo-desc">Zero Delivery Charge</p>
+            </div>
+            <img 
+              src="/banners/freshapartment.png" 
+              alt="Society Delivery" 
+              className="promo-card-img" 
+              loading="eager"
+            />
           </div>
         </div>
       </section>
