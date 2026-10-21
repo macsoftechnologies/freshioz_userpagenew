@@ -127,74 +127,64 @@ export default function HomePage() {
           }}
         />
 
-        {/* BigBasket-Style 4 Visual Banner Cards (Desktop >= 1024px) */}
-        <div className="promo-quad-grid hero-desktop-only">
-          {/* Card 1: Mandi Harvest */}
-          <div 
-            className="promo-image-card"
-            onClick={() => {
-              if (!activeUser) setIsAuthModalOpen(true);
-              navigate('/catalog?category=Vegetables');
-            }}
-            title="Farm-Fresh Greens & Vegetables"
-          >
-            <img 
-              src="/banners/freshmarket.png" 
-              alt="Farm-Fresh Vegetables Harvest" 
-              className="promo-image-card-img" 
-              loading="eager"
-            />
+        {/* Split Desktop Hero: Green Botanical Card (Left) + Direct Live Products (Right) */}
+        <div className="home-hero-split-grid hero-desktop-only">
+          {/* Left Column: Signature Botanical Dark-Green Glass Card ("That Green Thing") */}
+          <div className="hero-glass-card hero-split-card">
+            <div className="hero-split-left-content">
+              <div className="hero-tag-badge">
+                <Leaf size={13} color="#78B159" />
+                <span>Next-Day Farm Harvest</span>
+              </div>
+
+              <h1 className="hero-main-title">
+                Farm-Fresh Greens Delivered to <span>{selectedSociety?.name || 'Your Society'}</span>
+              </h1>
+
+              <p className="hero-subtitle-desc">
+                Direct from morning mandis to your community doorstep by 7:00 AM. Zero dark-store storage, zero chemical waxing — 100% natural morning freshness.
+              </p>
+
+              <div className="hero-cta-group">
+                <button
+                  type="button"
+                  className="hero-primary-btn"
+                  onClick={() => {
+                    if (!activeUser) setIsAuthModalOpen(true);
+                    navigate('/catalog');
+                  }}
+                >
+                  <span>Explore Daily Harvest</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Card 2: 7:00 AM Delivery */}
-          <div 
-            className="promo-image-card"
-            onClick={() => {
-              if (!activeUser) setIsAuthModalOpen(true);
-              navigate('/catalog');
-            }}
-            title="Next-Day 7:00 AM Dawn Delivery"
-          >
-            <img 
-              src="/banners/freshmorning.png" 
-              alt="Express 7:00 AM Morning Delivery" 
-              className="promo-image-card-img" 
-              loading="eager"
-            />
-          </div>
+          {/* Right Column: Direct Live Products Above Fold */}
+          <div className="hero-split-products-panel">
+            <div className="hero-split-products-header">
+              <div className="hero-split-headline">
+                <Sparkles size={14} color="#F28E14" />
+                <span>Today's Top Mandi Picks</span>
+              </div>
+              <Link to="/catalog" className="hero-split-view-all">
+                <span>View All</span>
+                <ArrowRight size={12} />
+              </Link>
+            </div>
 
-          {/* Card 3: Daily Steals */}
-          <div 
-            className="promo-image-card"
-            onClick={() => {
-              if (!activeUser) setIsAuthModalOpen(true);
-              navigate('/catalog');
-            }}
-            title="Daily Steals & Special Offers"
-          >
-            <img 
-              src="/banners/glossy.png" 
-              alt="Daily Steals and Discounts" 
-              className="promo-image-card-img" 
-              loading="eager"
-            />
-          </div>
-
-          {/* Card 4: Society Perks */}
-          <div 
-            className="promo-image-card"
-            onClick={() => {
-              if (!activeUser) setIsAuthModalOpen(true);
-              navigate('/catalog');
-            }}
-            title={`Free Doorstep Delivery to ${selectedSociety?.name || 'Your Society'}`}
-          >
-            <img 
-              src="/banners/freshapartment.png" 
-              alt="Society Free Doorstep Delivery" 
-              className="promo-image-card-img" 
-              loading="eager"
-            />
+            <div className="hero-split-products-grid">
+              {dailySpecials.length > 0 ? (
+                dailySpecials.slice(0, 2).map(product => (
+                  <ProductCard key={`hero_${product.id}`} product={product} />
+                ))
+              ) : (
+                <div className="hero-split-empty">
+                  <span>Loading morning harvest...</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>

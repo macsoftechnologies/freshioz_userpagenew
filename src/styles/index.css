@@ -807,51 +807,123 @@ button {
 }
 
 /* ==========================================================================
-   BIGBASKET-STYLE 4 FULL-IMAGE PROMO CARDS (Desktop >= 1024px)
+   SPLIT HERO: GREEN BOTANICAL CARD (LEFT) + DIRECT LIVE PRODUCTS (RIGHT)
    ========================================================================== */
-.promo-quad-grid {
+.home-hero-split-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+  align-items: stretch;
   width: 100%;
 }
 
-.promo-image-card {
-  position: relative;
+.hero-split-card {
+  height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 30px 34px !important;
+  background: linear-gradient(135deg, #234B3C 0%, #173328 100%) !important;
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(120, 177, 89, 0.25);
+}
+
+.hero-split-left-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hero-split-left-content .hero-tag-badge {
+  margin-bottom: 0 !important;
+}
+
+.hero-split-left-content .hero-main-title {
+  font-size: 26px !important;
+  line-height: 1.25;
+  margin-bottom: 0 !important;
+  color: #FFFFFF;
+}
+
+.hero-split-left-content .hero-main-title span {
+  color: var(--citrus-orange);
+}
+
+.hero-split-left-content .hero-subtitle-desc {
+  font-size: 13px !important;
+  color: #D2E2D8;
+  line-height: 1.5;
+  margin-bottom: 4px !important;
+}
+
+.hero-split-products-panel {
   background: #FFFFFF;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 4px 18px rgba(21, 34, 27, 0.07);
-  cursor: pointer;
-  overflow: hidden;
-  height: 220px;
+  box-shadow: 0 4px 18px rgba(21, 34, 27, 0.06);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hero-split-products-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.hero-split-headline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--spruce-green);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.hero-split-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--citrus-orange);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.hero-split-view-all:hover {
+  color: var(--citrus-hover);
+  text-decoration: underline;
+}
+
+.hero-split-products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  flex: 1;
+}
+
+.hero-split-products-grid .produce-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.hero-split-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
-  box-sizing: border-box;
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
-              border-color 0.25s ease;
-}
-
-.promo-image-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(21, 34, 27, 0.14);
-  border-color: var(--sprout-green);
-}
-
-.promo-image-card-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-  display: block;
-}
-
-.promo-image-card:hover .promo-image-card-img {
-  transform: scale(1.06);
+  min-height: 180px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
 }
 
 .hero-glass-card {
