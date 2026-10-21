@@ -127,88 +127,72 @@ export default function HomePage() {
           }}
         />
 
-        {/* BigBasket-Style 4 Promo Cards Grid (Desktop >= 1024px) */}
+        {/* BigBasket-Style 4 Visual Banner Cards (Desktop >= 1024px) */}
         <div className="promo-quad-grid hero-desktop-only">
           {/* Card 1: Mandi Harvest */}
           <div 
-            className="promo-card promo-card-green"
+            className="promo-image-card"
             onClick={() => {
               if (!activeUser) setIsAuthModalOpen(true);
               navigate('/catalog?category=Vegetables');
             }}
+            title="Farm-Fresh Greens & Vegetables"
           >
-            <div className="promo-card-text">
-              <span className="promo-badge promo-badge-green">🌿 100% Direct</span>
-              <h3 className="promo-title">Farm Harvest</h3>
-              <p className="promo-desc">Morning Mandi Picked</p>
-            </div>
             <img 
               src="/banners/freshmarket.png" 
-              alt="Farm-Fresh Vegetables" 
-              className="promo-card-img" 
+              alt="Farm-Fresh Vegetables Harvest" 
+              className="promo-image-card-img" 
               loading="eager"
             />
           </div>
 
           {/* Card 2: 7:00 AM Delivery */}
           <div 
-            className="promo-card promo-card-emerald"
+            className="promo-image-card"
             onClick={() => {
               if (!activeUser) setIsAuthModalOpen(true);
               navigate('/catalog');
             }}
+            title="Next-Day 7:00 AM Dawn Delivery"
           >
-            <div className="promo-card-text">
-              <span className="promo-badge promo-badge-emerald">⚡ By 7:00 AM</span>
-              <h3 className="promo-title">Dawn Drop</h3>
-              <p className="promo-desc">Doorstep Delivery</p>
-            </div>
             <img 
               src="/banners/freshmorning.png" 
-              alt="Express Morning Delivery" 
-              className="promo-card-img" 
+              alt="Express 7:00 AM Morning Delivery" 
+              className="promo-image-card-img" 
               loading="eager"
             />
           </div>
 
           {/* Card 3: Daily Steals */}
           <div 
-            className="promo-card promo-card-orange"
+            className="promo-image-card"
             onClick={() => {
               if (!activeUser) setIsAuthModalOpen(true);
               navigate('/catalog');
             }}
+            title="Daily Steals & Special Offers"
           >
-            <div className="promo-card-text">
-              <span className="promo-badge promo-badge-orange">🔥 Hot Deals</span>
-              <h3 className="promo-title">Daily Steals</h3>
-              <p className="promo-desc">Under ₹49 Specials</p>
-            </div>
             <img 
               src="/banners/glossy.png" 
-              alt="Daily Deals & Offers" 
-              className="promo-card-img" 
+              alt="Daily Steals and Discounts" 
+              className="promo-image-card-img" 
               loading="eager"
             />
           </div>
 
           {/* Card 4: Society Perks */}
           <div 
-            className="promo-card promo-card-teal"
+            className="promo-image-card"
             onClick={() => {
               if (!activeUser) setIsAuthModalOpen(true);
               navigate('/catalog');
             }}
+            title={`Free Doorstep Delivery to ${selectedSociety?.name || 'Your Society'}`}
           >
-            <div className="promo-card-text">
-              <span className="promo-badge promo-badge-teal">🏢 {selectedSociety?.name || 'Society Drop'}</span>
-              <h3 className="promo-title">Free Delivery</h3>
-              <p className="promo-desc">Zero Delivery Charge</p>
-            </div>
             <img 
               src="/banners/freshapartment.png" 
-              alt="Society Delivery" 
-              className="promo-card-img" 
+              alt="Society Free Doorstep Delivery" 
+              className="promo-image-card-img" 
               loading="eager"
             />
           </div>
