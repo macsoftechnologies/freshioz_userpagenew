@@ -127,36 +127,50 @@ export default function HomePage() {
           }}
         />
 
-        {/* Desktop Compact Hero Strip (>= 1024px) */}
-        <div className="hero-glass-card hero-compact-bar hero-desktop-only">
+        {/* Desktop Spacious Hero Card (>= 1024px) */}
+        <div className="hero-glass-card hero-desktop-only">
           <div className="hero-left-content">
-            <div className="hero-title-row">
-              <div className="hero-tag-badge">
-                <Leaf size={13} color="#78B159" />
-                <span>Next-Day Farm Harvest</span>
-              </div>
-              <h1 className="hero-main-title">
-                Farm-Fresh Greens Delivered to <span>{selectedSociety?.name || 'Your Society'}</span>
-              </h1>
+            <div className="hero-tag-badge">
+              <Leaf size={14} color="#78B159" />
+              <span>Next-Day Farm Harvest</span>
             </div>
 
-            <p className="hero-subtitle-desc">
-              Direct from morning mandis to your community doorstep by 7:00 AM. Zero dark-store storage, zero chemical waxing — 100% natural morning freshness.
-            </p>
-          </div>
+            <h1 className="hero-main-title">
+              Farm-Fresh Greens Delivered to <span>{selectedSociety?.name || 'Your Society'}</span>
+            </h1>
 
-          <div className="hero-cta-group">
-            <button
-              type="button"
-              className="hero-primary-btn"
-              onClick={() => {
-                if (!activeUser) setIsAuthModalOpen(true);
-                navigate('/catalog');
-              }}
-            >
-              <span>Explore Daily Harvest</span>
-              <ArrowRight size={15} />
-            </button>
+            <p className="hero-subtitle-desc">
+              Direct from morning mandis to your community doorstep by 7:00 AM. 
+              Zero dark-store storage, zero chemical waxing — 100% natural morning freshness.
+            </p>
+
+            <div className="hero-cta-group">
+              <button
+                type="button"
+                className="hero-primary-btn"
+                onClick={() => {
+                  if (!activeUser) setIsAuthModalOpen(true);
+                  navigate('/catalog');
+                }}
+              >
+                <span>Explore Daily Harvest</span>
+                <ArrowRight size={16} />
+              </button>
+
+              {/* Bulk Wholesale Crates button - Commented out for retail concentration
+              <button
+                type="button"
+                className="hero-secondary-btn"
+                onClick={() => {
+                  setIsWholesale(true);
+                  navigate('/wholesale');
+                }}
+              >
+                <Package size={16} />
+                <span>Bulk Wholesale Crates</span>
+              </button>
+              */}
+            </div>
           </div>
         </div>
       </section>
