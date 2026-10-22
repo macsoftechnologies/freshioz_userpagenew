@@ -897,7 +897,12 @@ export default function UserProfilePage({ forcedTab }) {
                       </div>
 
                       {/* Actions */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        flexWrap: 'wrap'
+                      }}>
                         {/* PENDING: PROMINENT LIVE TRACK BUTTON */}
                         {isPending && (
                           <Link
@@ -905,21 +910,23 @@ export default function UserProfilePage({ forcedTab }) {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: '6px',
                               background: '#234B3C',
                               color: '#FFFFFF',
-                              padding: '9px 18px',
+                              padding: '8px 16px',
                               borderRadius: '9999px',
-                              fontSize: '13px',
+                              fontSize: '12.5px',
                               fontWeight: 800,
                               textDecoration: 'none',
+                              whiteSpace: 'nowrap',
                               boxShadow: '0 4px 12px rgba(35, 75, 60, 0.25)',
                               transition: 'all 0.15s ease'
                             }}
                           >
-                            <Truck size={15} />
+                            <Truck size={14} />
                             <span>Track Delivery Live</span>
-                            <ArrowRight size={14} />
+                            <ArrowRight size={13} />
                           </Link>
                         )}
 
@@ -933,18 +940,20 @@ export default function UserProfilePage({ forcedTab }) {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: '5px',
                               background: '#FFF5F5',
                               color: '#DC2626',
                               border: '1px solid #FECACA',
-                              padding: '8px 14px',
+                              padding: '7px 13px',
                               borderRadius: '9999px',
-                              fontSize: '12.5px',
+                              fontSize: '12px',
                               fontWeight: 700,
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
                             }}
                           >
-                            <XCircle size={14} />
+                            <XCircle size={13} />
                             <span>Cancel Order</span>
                           </button>
                         )}
@@ -958,20 +967,23 @@ export default function UserProfilePage({ forcedTab }) {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px',
+                                justifyContent: 'center',
+                                gap: '5px',
                                 background: '#FEF3C7',
                                 color: '#92400E',
                                 border: '1px solid #FDE68A',
-                                padding: '8px 14px',
+                                padding: '7px 12px',
                                 borderRadius: '9999px',
-                                fontSize: '12.5px',
-                                fontWeight: 800,
+                                fontSize: '12px',
+                                fontWeight: 700,
                                 cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                flex: '1 1 auto',
                                 transition: 'all 0.15s ease'
                               }}
                             >
                               <Star size={13} fill="#F59E0B" color="#F59E0B" />
-                              <span>Rate Harvest & Delivery</span>
+                              <span>Rate Order</span>
                             </button>
 
                             <button
@@ -980,19 +992,23 @@ export default function UserProfilePage({ forcedTab }) {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px',
+                                justifyContent: 'center',
+                                gap: '5px',
                                 background: '#EBF2EE',
                                 color: '#234B3C',
                                 border: '1px solid #C8DBD0',
-                                padding: '8px 14px',
+                                padding: '7px 12px',
                                 borderRadius: '9999px',
-                                fontSize: '12.5px',
+                                fontSize: '12px',
                                 fontWeight: 700,
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                flex: '1 1 auto',
+                                transition: 'all 0.15s ease'
                               }}
                             >
                               <RotateCcw size={13} />
-                              <span>Reorder Produce</span>
+                              <span>Reorder</span>
                             </button>
 
                             <button
@@ -1001,20 +1017,23 @@ export default function UserProfilePage({ forcedTab }) {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
+                                justifyContent: 'center',
                                 gap: '5px',
                                 background: '#F8FAF9',
                                 border: '1px solid #D5E2DA',
                                 color: '#234B3C',
-                                fontSize: '12.5px',
+                                fontSize: '12px',
                                 fontWeight: 700,
                                 borderRadius: '9999px',
-                                padding: '8px 14px',
+                                padding: '7px 12px',
                                 cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                flex: '1 1 auto',
                                 transition: 'all 0.15s ease'
                               }}
                             >
                               <FileText size={13} />
-                              <span>View Receipt</span>
+                              <span>Receipt</span>
                             </button>
                           </>
                         )}
@@ -1288,7 +1307,7 @@ export default function UserProfilePage({ forcedTab }) {
                             🏢 <strong>{order.societyName || 'Greenfield Heights'}</strong> ({order.flatNo || 'Tower B - Flat 402'})
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                             <div style={{ textAlign: 'right' }}>
                               <div style={{ fontSize: '11px', color: '#64748B' }}>
                                 Sub: ₹{order.subtotal} | Delivery: {order.deliveryFee === 0 ? 'FREE' : `₹${order.deliveryFee}`}
@@ -1298,7 +1317,7 @@ export default function UserProfilePage({ forcedTab }) {
                               </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               {isDelivered && (
                                 <>
                                   <button
@@ -1315,7 +1334,10 @@ export default function UserProfilePage({ forcedTab }) {
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '4px'
+                                      justifyContent: 'center',
+                                      gap: '4px',
+                                      whiteSpace: 'nowrap',
+                                      flex: '1 1 auto'
                                     }}
                                   >
                                     <Star size={12} fill="#F59E0B" color="#F59E0B" />
@@ -1336,7 +1358,10 @@ export default function UserProfilePage({ forcedTab }) {
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '4px'
+                                      justifyContent: 'center',
+                                      gap: '4px',
+                                      whiteSpace: 'nowrap',
+                                      flex: '1 1 auto'
                                     }}
                                   >
                                     <RotateCcw size={12} />
@@ -1358,7 +1383,9 @@ export default function UserProfilePage({ forcedTab }) {
                                     textDecoration: 'none',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    justifyContent: 'center',
+                                    gap: '4px',
+                                    whiteSpace: 'nowrap'
                                   }}
                                 >
                                   <span>Track Live</span>
@@ -1369,21 +1396,24 @@ export default function UserProfilePage({ forcedTab }) {
                                   type="button"
                                   onClick={() => setViewingReceiptOrder(order)}
                                   style={{
-                                    background: '#234B3C',
-                                    color: '#FFFFFF',
-                                    padding: '7px 14px',
+                                    background: '#F8FAF9',
+                                    border: '1px solid #D5E2DA',
+                                    color: '#234B3C',
+                                    padding: '7px 12px',
                                     borderRadius: '9999px',
                                     fontSize: '12px',
                                     fontWeight: 700,
-                                    border: 'none',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '5px'
+                                    justifyContent: 'center',
+                                    gap: '5px',
+                                    whiteSpace: 'nowrap',
+                                    flex: '1 1 auto'
                                   }}
                                 >
                                   <FileText size={12} />
-                                  <span>View Receipt</span>
+                                  <span>Receipt</span>
                                 </button>
                               )}
                             </div>
