@@ -896,13 +896,8 @@ export default function UserProfilePage({ forcedTab }) {
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        flexWrap: 'wrap'
-                      }}>
+                      {/* Actions Track: Native App Horizontal Scroll */}
+                      <div className="order-actions-scroll-track">
                         {/* PENDING: PROMINENT LIVE TRACK BUTTON */}
                         {isPending && (
                           <Link
@@ -920,12 +915,13 @@ export default function UserProfilePage({ forcedTab }) {
                               fontWeight: 800,
                               textDecoration: 'none',
                               whiteSpace: 'nowrap',
+                              flexShrink: 0,
                               boxShadow: '0 4px 12px rgba(35, 75, 60, 0.25)',
                               transition: 'all 0.15s ease'
                             }}
                           >
                             <Truck size={14} />
-                            <span>Track Delivery Live</span>
+                            <span>Track Live</span>
                             <ArrowRight size={13} />
                           </Link>
                         )}
@@ -950,15 +946,16 @@ export default function UserProfilePage({ forcedTab }) {
                               fontSize: '12px',
                               fontWeight: 700,
                               cursor: 'pointer',
-                              whiteSpace: 'nowrap'
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
                             }}
                           >
                             <XCircle size={13} />
-                            <span>Cancel Order</span>
+                            <span>Cancel</span>
                           </button>
                         )}
 
-                        {/* DELIVERED: Rate, Reorder and Invoice button */}
+                        {/* DELIVERED: Rate, Reorder and Receipt button */}
                         {isDelivered && (
                           <>
                             <button
@@ -972,18 +969,18 @@ export default function UserProfilePage({ forcedTab }) {
                                 background: '#FEF3C7',
                                 color: '#92400E',
                                 border: '1px solid #FDE68A',
-                                padding: '7px 12px',
+                                padding: '7px 14px',
                                 borderRadius: '9999px',
                                 fontSize: '12px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
-                                flex: '1 1 auto',
+                                flexShrink: 0,
                                 transition: 'all 0.15s ease'
                               }}
                             >
                               <Star size={13} fill="#F59E0B" color="#F59E0B" />
-                              <span>Rate Order</span>
+                              <span>Rate</span>
                             </button>
 
                             <button
@@ -997,13 +994,13 @@ export default function UserProfilePage({ forcedTab }) {
                                 background: '#EBF2EE',
                                 color: '#234B3C',
                                 border: '1px solid #C8DBD0',
-                                padding: '7px 12px',
+                                padding: '7px 14px',
                                 borderRadius: '9999px',
                                 fontSize: '12px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
-                                flex: '1 1 auto',
+                                flexShrink: 0,
                                 transition: 'all 0.15s ease'
                               }}
                             >
@@ -1025,10 +1022,10 @@ export default function UserProfilePage({ forcedTab }) {
                                 fontSize: '12px',
                                 fontWeight: 700,
                                 borderRadius: '9999px',
-                                padding: '7px 12px',
+                                padding: '7px 14px',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
-                                flex: '1 1 auto',
+                                flexShrink: 0,
                                 transition: 'all 0.15s ease'
                               }}
                             >
@@ -1317,7 +1314,7 @@ export default function UserProfilePage({ forcedTab }) {
                               </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <div className="order-actions-scroll-track">
                               {isDelivered && (
                                 <>
                                   <button
@@ -1327,7 +1324,7 @@ export default function UserProfilePage({ forcedTab }) {
                                       background: '#FEF3C7',
                                       color: '#92400E',
                                       border: '1px solid #FDE68A',
-                                      padding: '7px 12px',
+                                      padding: '7px 14px',
                                       borderRadius: '9999px',
                                       fontSize: '12px',
                                       fontWeight: 800,
@@ -1337,7 +1334,7 @@ export default function UserProfilePage({ forcedTab }) {
                                       justifyContent: 'center',
                                       gap: '4px',
                                       whiteSpace: 'nowrap',
-                                      flex: '1 1 auto'
+                                      flexShrink: 0
                                     }}
                                   >
                                     <Star size={12} fill="#F59E0B" color="#F59E0B" />
@@ -1351,7 +1348,7 @@ export default function UserProfilePage({ forcedTab }) {
                                       background: '#EBF2EE',
                                       color: '#234B3C',
                                       border: '1px solid #C8DBD0',
-                                      padding: '7px 12px',
+                                      padding: '7px 14px',
                                       borderRadius: '9999px',
                                       fontSize: '12px',
                                       fontWeight: 700,
@@ -1361,7 +1358,7 @@ export default function UserProfilePage({ forcedTab }) {
                                       justifyContent: 'center',
                                       gap: '4px',
                                       whiteSpace: 'nowrap',
-                                      flex: '1 1 auto'
+                                      flexShrink: 0
                                     }}
                                   >
                                     <RotateCcw size={12} />
@@ -1385,7 +1382,8 @@ export default function UserProfilePage({ forcedTab }) {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '4px',
-                                    whiteSpace: 'nowrap'
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0
                                   }}
                                 >
                                   <span>Track Live</span>
@@ -1399,7 +1397,7 @@ export default function UserProfilePage({ forcedTab }) {
                                     background: '#F8FAF9',
                                     border: '1px solid #D5E2DA',
                                     color: '#234B3C',
-                                    padding: '7px 12px',
+                                    padding: '7px 14px',
                                     borderRadius: '9999px',
                                     fontSize: '12px',
                                     fontWeight: 700,
@@ -1409,7 +1407,7 @@ export default function UserProfilePage({ forcedTab }) {
                                     justifyContent: 'center',
                                     gap: '5px',
                                     whiteSpace: 'nowrap',
-                                    flex: '1 1 auto'
+                                    flexShrink: 0
                                   }}
                                 >
                                   <FileText size={12} />

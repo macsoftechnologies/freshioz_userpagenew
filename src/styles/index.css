@@ -4843,4 +4843,31 @@ button {
   }
 }
 
+/* ==========================================================================
+   NATIVE APP-STYLE HORIZONTAL SCROLL ACTION TRACK
+   ========================================================================== */
+.order-actions-scroll-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  padding: 4px 0;
+  max-width: 100%;
+}
+
+.order-actions-scroll-track::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+@media (max-width: 640px) {
+  .order-actions-scroll-track {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+
 
