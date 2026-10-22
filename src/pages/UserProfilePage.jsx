@@ -101,6 +101,7 @@ export default function UserProfilePage({ forcedTab }) {
   const [myReviews, setMyReviews] = useState([]);
   const [reviewingOrder, setReviewingOrder] = useState(null);
   const [reviewActiveTab, setReviewActiveTab] = useState('PRODUCT'); // 'PRODUCT' | 'DELIVERY'
+  const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
   const [cropRatings, setCropRatings] = useState({});
   const [cropComments, setCropComments] = useState({});
   const [deliveryRating, setDeliveryRating] = useState(5);
