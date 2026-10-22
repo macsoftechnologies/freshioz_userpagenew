@@ -19,7 +19,9 @@ import {
   MessageSquare,
   MapPin,
   Lock,
-  Building2
+  Building2,
+  Printer,
+  FileText
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
@@ -114,6 +116,10 @@ export default function UserProfilePage({ forcedTab }) {
   const [websiteRating, setWebsiteRating] = useState(5);
   const [websiteComment, setWebsiteComment] = useState('');
   const [isSubmittingWebsiteReview, setIsSubmittingWebsiteReview] = useState(false);
+
+  // Digital Invoice & Delivery Receipt Modal
+  const [viewingReceiptOrder, setViewingReceiptOrder] = useState(null);
+  const [reorderNotice, setReorderNotice] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -403,16 +409,38 @@ export default function UserProfilePage({ forcedTab }) {
 
   // Quick reorder helper
   const handleReorder = (order) => {
+    if (!order?.items || order.items.length === 0) {
+      alert('No produce items found in this order to reorder.');
+      return;
+    }
     let addedCount = 0;
-    order.items.forEach(item => {
-      const prod = store.products.find(p => p.id === item.id);
-      if (prod) {
-        addToCart(prod, item.isWholesale || false);
-        addedCount++;
+    (order.items || []).forEach(item => {
+      const targetId = item.productId || item.id;
+      let prod = (store.products || []).find(p => 
+        (targetId && (p.id === targetId || p._id === targetId)) ||
+        (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+      );
+      if (!prod) {
+        prod = {
+          id: targetId || `reorder_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          name: item.name,
+          category: item.category || 'Fresh Produce',
+          image: item.image || item.imageUrl || '/banners/freshmarket.png',
+          retailUnit: item.unit || '1 kg',
+          retailPrice: item.price || item.retailPrice || 0,
+          wholesaleUnit: item.unit || '1 crate',
+          wholesalePrice: item.price || 0,
+          gstPercent: item.gstPercent || 0
+        };
       }
+      addToCart(prod, item.isWholesale || false);
+      addedCount++;
     });
+
     if (addedCount > 0) {
       setIsCartOpen(true);
+      setReorderNotice(`Added ${addedCount} produce item(s) from Order #${order.id} to your cart!`);
+      setTimeout(() => setReorderNotice(''), 4500);
     }
   };
 
@@ -967,22 +995,27 @@ export default function UserProfilePage({ forcedTab }) {
                               <span>Reorder Produce</span>
                             </button>
 
-                            <Link
-                              to={`/tracking/${order.id}`}
+                            <button
+                              type="button"
+                              onClick={() => setViewingReceiptOrder(order)}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                color: '#52635A',
+                                gap: '5px',
+                                background: '#F8FAF9',
+                                border: '1px solid #D5E2DA',
+                                color: '#234B3C',
                                 fontSize: '12.5px',
-                                fontWeight: 600,
-                                textDecoration: 'none',
-                                padding: '8px 12px'
+                                fontWeight: 700,
+                                borderRadius: '9999px',
+                                padding: '8px 14px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
                               }}
                             >
+                              <FileText size={13} />
                               <span>View Receipt</span>
-                              <ChevronRight size={14} />
-                            </Link>
+                            </button>
                           </>
                         )}
                       </div>
@@ -1312,24 +1345,47 @@ export default function UserProfilePage({ forcedTab }) {
                                 </>
                               )}
 
-                              <Link
-                                to={`/tracking/${order.id}`}
-                                style={{
-                                  background: '#234B3C',
-                                  color: '#FFFFFF',
-                                  padding: '7px 14px',
-                                  borderRadius: '9999px',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  textDecoration: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                              >
-                                <span>{isPending ? 'Track Live' : 'View Receipt'}</span>
-                                <ChevronRight size={13} />
-                              </Link>
+                              {isPending ? (
+                                <Link
+                                  to={`/tracking/${order.id}`}
+                                  style={{
+                                    background: '#234B3C',
+                                    color: '#FFFFFF',
+                                    padding: '7px 14px',
+                                    borderRadius: '9999px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <span>Track Live</span>
+                                  <ChevronRight size={13} />
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingReceiptOrder(order)}
+                                  style={{
+                                    background: '#234B3C',
+                                    color: '#FFFFFF',
+                                    padding: '7px 14px',
+                                    borderRadius: '9999px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}
+                                >
+                                  <FileText size={12} />
+                                  <span>View Receipt</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2287,6 +2343,297 @@ export default function UserProfilePage({ forcedTab }) {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* ================= DIGITAL TAX INVOICE & DELIVERY RECEIPT MODAL ================= */}
+      {viewingReceiptOrder && (
+        <div className="modal-backdrop-overlay" onClick={() => setViewingReceiptOrder(null)}>
+          <div 
+            className="modal-dialog-box" 
+            style={{ maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EBF2EE', color: '#234B3C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', margin: 0 }}>
+                    Delivery Receipt & Invoice
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748B' }}>
+                    Order #{viewingReceiptOrder.id}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                  title="Print or Save as PDF"
+                >
+                  <Printer size={14} />
+                  <span>Print</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewingReceiptOrder(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748B',
+                    cursor: 'pointer',
+                    padding: '4px'
+                  }}
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Receipt Body */}
+            <div className="printable-receipt-card" style={{ background: '#FAFBFB', border: '1px solid #E5ECE7', borderRadius: '12px', padding: '20px' }}>
+              {/* Brand Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1.5px dashed #CBD5E1', paddingBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: '#234B3C', letterSpacing: '-0.5px' }}>
+                    Freshioz
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#52635A', marginTop: '2px' }}>
+                    Farm-Direct Fresh Produce • Dawn Mandi Harvest
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748B' }}>
+                    www.freshioz.com
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    background: viewingReceiptOrder.status === 'DELIVERED' ? '#EBF7E5' : '#FEF3C7',
+                    color: viewingReceiptOrder.status === 'DELIVERED' ? '#234B3C' : '#92400E',
+                    fontWeight: 800,
+                    fontSize: '11.5px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    textTransform: 'uppercase'
+                  }}>
+                    {viewingReceiptOrder.status === 'DELIVERED' ? 'Delivered & Completed' : viewingReceiptOrder.status}
+                  </span>
+                  <div style={{ fontSize: '12px', color: '#15221B', fontWeight: 700, marginTop: '6px' }}>
+                    Receipt Date: {viewingReceiptOrder.deliveryDate || new Date().toLocaleDateString('en-IN')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Meta & Delivery Destination */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '18px', background: '#FFFFFF', padding: '14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#234B3C', marginBottom: '4px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.4px' }}>
+                    Delivered To
+                  </div>
+                  <div style={{ fontWeight: 700, color: '#15221B', fontSize: '13px' }}>
+                    {activeUser?.name || 'Resident Customer'}
+                  </div>
+                  <div style={{ color: '#52635A', marginTop: '2px' }}>
+                    Flat / Door: <strong>{viewingReceiptOrder.flatNo || activeUser?.flatNo || 'Registered Flat'}</strong>
+                  </div>
+                  <div style={{ color: '#52635A' }}>
+                    Community: <strong>{viewingReceiptOrder.societyName || activeUser?.societyName || 'Apartment Society'}</strong>
+                  </div>
+                  <div style={{ color: '#64748B', fontSize: '11.5px', marginTop: '2px' }}>
+                    Phone: {viewingReceiptOrder.userPhone || activeUser?.phone || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontWeight: 800, color: '#234B3C', marginBottom: '4px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.4px' }}>
+                    Payment & Drop Info
+                  </div>
+                  <div style={{ color: '#52635A' }}>
+                    Payment Mode: <strong style={{ color: '#15221B' }}>{viewingReceiptOrder.paymentMethod || 'Online'}</strong>
+                  </div>
+                  <div style={{ color: '#52635A', marginTop: '2px' }}>
+                    Payment Status: <strong style={{ color: viewingReceiptOrder.paymentStatus === 'PAID' || viewingReceiptOrder.codPaymentReceived ? '#166534' : '#B91C1C' }}>
+                      {viewingReceiptOrder.paymentStatus === 'PAID' || viewingReceiptOrder.codPaymentReceived ? 'PAID ✅' : 'Cash / UPI on Delivery'}
+                    </strong>
+                  </div>
+                  <div style={{ color: '#52635A', marginTop: '2px' }}>
+                    Slot: <strong>{viewingReceiptOrder.deliverySlot || 'Dawn Drop (7:00 AM)'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Itemized Crops Table */}
+              <div style={{ marginBottom: '18px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                  <thead>
+                    <tr style={{ background: '#EBF2EE', color: '#234B3C', textAlign: 'left', borderBottom: '1.5px solid #CBD5E1' }}>
+                      <th style={{ padding: '8px 10px', fontWeight: 800 }}>#</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 800 }}>Harvest Crop / Produce</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'center' }}>Pack Unit</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'center' }}>Qty</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'right' }}>Price</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 800, textAlign: 'right' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(viewingReceiptOrder.items || []).map((item, idx) => {
+                      const itemPrice = item.price || item.retailPrice || 0;
+                      const itemQty = item.quantity || item.qty || 1;
+                      const lineTotal = itemPrice * itemQty;
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0', background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
+                          <td style={{ padding: '8px 10px', color: '#64748B' }}>{idx + 1}</td>
+                          <td style={{ padding: '8px 10px', fontWeight: 700, color: '#15221B' }}>
+                            {item.name}
+                            {item.isWholesale && (
+                              <span style={{ marginLeft: '6px', fontSize: '10px', background: '#FEF3C7', color: '#92400E', padding: '1px 6px', borderRadius: '4px' }}>
+                                Wholesale
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', color: '#52635A' }}>{item.unit || '1 kg'}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#15221B' }}>{itemQty}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#52635A' }}>₹{itemPrice}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#15221B' }}>₹{lineTotal}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Financial Calculation Breakdown */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+                <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52635A' }}>
+                    <span>Items Subtotal:</span>
+                    <span style={{ fontWeight: 700, color: '#15221B' }}>
+                      ₹{viewingReceiptOrder.subtotal || viewingReceiptOrder.totalAmount}
+                    </span>
+                  </div>
+
+                  {viewingReceiptOrder.bulkSavings > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', fontWeight: 700 }}>
+                      <span>Volume Savings:</span>
+                      <span>-₹{viewingReceiptOrder.bulkSavings}</span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52635A' }}>
+                    <span>Community Delivery:</span>
+                    <span style={{ color: '#166534', fontWeight: 700 }}>FREE (₹0)</span>
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    paddingTop: '8px',
+                    borderTop: '1.5px solid #CBD5E1',
+                    fontSize: '15px',
+                    fontWeight: 900,
+                    color: '#234B3C',
+                    marginTop: '4px'
+                  }}>
+                    <span>Grand Total:</span>
+                    <span>₹{viewingReceiptOrder.totalAmount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Freshness Note & Guarantee */}
+              <div style={{ background: '#EBF2EE', padding: '10px 14px', borderRadius: '8px', fontSize: '11.5px', color: '#234B3C', textAlign: 'center' }}>
+                🌿 <strong>100% Morning Mandi Freshness Guarantee:</strong> Harvested directly at APMC mandi dawn and delivered directly to your society doorstep.
+              </div>
+            </div>
+
+            {/* Bottom Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const ord = viewingReceiptOrder;
+                  setViewingReceiptOrder(null);
+                  handleReorder(ord);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#EBF2EE',
+                  color: '#234B3C',
+                  border: '1px solid #C8DBD0',
+                  padding: '9px 18px',
+                  borderRadius: '9999px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                <RotateCcw size={14} />
+                <span>Reorder These Items</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewingReceiptOrder(null)}
+                style={{
+                  padding: '9px 24px',
+                  background: '#234B3C',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  fontWeight: 800,
+                  fontSize: '12.5px',
+                  cursor: 'pointer'
+                }}
+              >
+                Close Receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Reorder Toast Notification */}
+      {reorderNotice && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: '#234B3C',
+          color: '#FFFFFF',
+          padding: '12px 20px',
+          borderRadius: '12px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontSize: '13.5px',
+          fontWeight: 700
+        }}>
+          <CheckCircle2 size={18} color="#78B159" />
+          <span>{reorderNotice}</span>
         </div>
       )}
     </div>
