@@ -29,25 +29,17 @@ export default function LiveVanTransitVisualizer({
   const milestones = [
     { 
       id: 'CONFIRMED', 
-      label: 'Batched', 
-      sublabel: 'Dawn Cutoff', 
-      pct: 10, 
+      label: 'Confirmed', 
+      sublabel: 'Scheduled', 
+      pct: 14, 
       icon: Clock,
-      color: '#78B159'
-    },
-    { 
-      id: 'PROCURING', 
-      label: 'Procured', 
-      sublabel: 'Bidding Won', 
-      pct: 30, 
-      icon: Leaf,
       color: '#78B159'
     },
     { 
       id: 'PACKED', 
       label: 'Packed', 
-      sublabel: 'QC & Packed', 
-      pct: 50, 
+      sublabel: 'QC & Crated', 
+      pct: 40, 
       icon: PackageCheck,
       color: '#78B159'
     },
@@ -55,7 +47,7 @@ export default function LiveVanTransitVisualizer({
       id: 'OUT_FOR_DELIVERY', 
       label: 'En-Route', 
       sublabel: 'To Society Gate', 
-      pct: 70, 
+      pct: 68, 
       icon: Truck,
       color: '#F28E14'
     },
@@ -63,7 +55,7 @@ export default function LiveVanTransitVisualizer({
       id: 'DELIVERED', 
       label: 'Delivered', 
       sublabel: 'Society Drop Point', 
-      pct: 90, 
+      pct: 92, 
       icon: CheckCircle2,
       color: '#234B3C'
     }

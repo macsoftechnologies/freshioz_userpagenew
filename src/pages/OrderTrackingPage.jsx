@@ -3,9 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { 
   CheckCircle2, 
   Clock, 
-  Leaf, 
-  PackageCheck, 
-  Truck, 
   ArrowLeft,
   AlertCircle,
   X
@@ -106,23 +103,21 @@ export default function OrderTrackingPage() {
     );
   }
 
-  const steps = [
-    { key: 'CONFIRMED', title: '1. Order Confirmed & Batched', desc: 'Batched with other society residents for dawn mandi harvest', icon: Clock },
-    { key: 'PROCURING', title: '2. Procured from Mandi & Farmers', desc: 'Procurement officer bidding at morning APMC Mandi', icon: Leaf },
-    { key: 'PACKED', title: '3. Quality Inspected & Flat Tagged', desc: 'Graded and packed at warehouse into society delivery crate', icon: PackageCheck },
-    { key: 'OUT_FOR_DELIVERY', title: '4. Out for Delivery to Society', desc: 'Van en-route to your apartment/hostel drop point', icon: Truck },
-    { key: 'DELIVERED', title: '5. Delivered to Society Desk', desc: 'Safely delivered and ready for morning pickup / doorstep', icon: CheckCircle2 }
-  ];
-
   const getStepIndex = (status) => {
     switch (status) {
-      case 'CONFIRMED': return 0;
-      case 'PROCURING': return 1;
+      case 'CONFIRMED':
+      case 'PROCURING': // Backward-compatible with legacy orders
+        return 0;
       case 'AT_WAREHOUSE':
-      case 'PACKED': return 2;
-      case 'OUT_FOR_DELIVERY': return 3;
-      case 'DELIVERED': return 4;
-      default: return 0;
+      case 'PACKED':
+        return 1;
+      case 'DISPATCHED':
+      case 'OUT_FOR_DELIVERY':
+        return 2;
+      case 'DELIVERED':
+        return 3;
+      default:
+        return 0;
     }
   };
 
@@ -297,64 +292,7 @@ export default function OrderTrackingPage() {
         currentStepIdx={currentStepIdx} 
       />
 
-      {/* 5-Step Visual Tracker Pipeline */}
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: '18px',
-        border: 'none',
-        boxShadow: '0 8px 24px rgba(35, 75, 60, 0.05)',
-        padding: '28px 24px',
-        marginBottom: '28px'
-      }}>
-        <h3 style={{ fontSize: '17px', color: '#15221B', marginBottom: '24px' }}>
-          Farm-to-Doorstep Journey
-        </h3>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative' }}>
-          {steps.map((step, idx) => {
-            const isCompleted = idx <= currentStepIdx;
-            const isCurrent = idx === currentStepIdx;
-            const Icon = step.icon;
-
-            return (
-              <div key={step.key} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: isCompleted ? '#234B3C' : '#F0F4F2',
-                  color: isCompleted ? '#FFFFFF' : '#83968D',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: isCurrent ? '0 0 0 4px #C3E6B4' : 'none',
-                  transition: 'all 0.3s'
-                }}>
-                  <Icon size={20} />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontWeight: 700,
-                    fontSize: '15px',
-                    color: isCompleted ? '#15221B' : '#83968D'
-                  }}>
-                    {step.title}
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#52635A', marginTop: '2px' }}>
-                    {step.desc}
-                  </div>
-                </div>
-
-                {isCompleted && (
-                  <CheckCircle2 size={18} color="#78B159" style={{ flexShrink: 0 }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Items Summary in this Order */}
       <div style={{
