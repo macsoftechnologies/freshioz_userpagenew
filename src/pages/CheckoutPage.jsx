@@ -20,11 +20,13 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { discountService } from '../services/discountService';
+import { paymentService } from '../services/paymentService';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { 
     cart, 
+    clearCart,
     cartSubtotal, 
     cartGst,
     deliveryFee,
@@ -40,11 +42,13 @@ export default function CheckoutPage() {
   } = useStore();
 
   const [deliverySlot, setDeliverySlot] = useState(defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)');
-  // Phase 1: Default to PAY_ON_DELIVERY (Cash on Delivery). Instant UPI commented out for Phase 1.
-  // const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [paymentMethod, setPaymentMethod] = useState('PAY_ON_DELIVERY');
   const [isPlacing, setIsPlacing] = useState(false);
   const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
+
+  // Gateway status & feedback
+  const [gatewayConfig, setGatewayConfig] = useState({ enabled: false, keyId: null, activeMode: 'TEST' });
+  const [paymentFeedback, setPaymentFeedback] = useState(null);
 
   // Rewards & Discount Coupon State
   const [availableDiscounts, setAvailableDiscounts] = useState([]);
@@ -69,6 +73,24 @@ export default function CheckoutPage() {
     loadDiscounts();
     return () => { isMounted = false; };
   }, [activeUser]);
+
+  // Load Razorpay gateway status
+  useEffect(() => {
+    let isMounted = true;
+    async function checkGateway() {
+      try {
+        const config = await paymentService.getPublicConfig();
+        if (isMounted && config && config.enabled && config.keyId) {
+          setGatewayConfig(config);
+          paymentService.loadRazorpayScript(); // Preload script
+        }
+      } catch (err) {
+        console.warn('Could not check payment gateway config:', err);
+      }
+    }
+    checkGateway();
+    return () => { isMounted = false; };
+  }, []);
 
   const handleApplyDiscount = async (codeToApply) => {
     const code = (codeToApply || couponInput).trim();
@@ -135,22 +157,151 @@ export default function CheckoutPage() {
   // User confirmed in popup: commits order to store
   const handleExecuteConfirmedOrder = async () => {
     setIsPlacing(true);
+    setPaymentFeedback(null);
 
-    try {
-      const order = await placeOrder({
-        deliverySlot,
-        paymentMethod,
-        discountCode: appliedDiscount?.code,
-        discountAmount: discountDeduction
-      });
-      setIsConfirmOrderModalOpen(false);
-      setIsPlacing(false);
-      if (order) {
-        navigate(`/tracking/${order.id}`);
+    // 1. CASH ON DELIVERY (PAY_ON_DELIVERY)
+    if (paymentMethod === 'PAY_ON_DELIVERY') {
+      try {
+        const order = await placeOrder({
+          deliverySlot,
+          paymentMethod: 'PAY_ON_DELIVERY',
+          discountCode: appliedDiscount?.code,
+          discountAmount: discountDeduction
+        });
+        setIsConfirmOrderModalOpen(false);
+        setIsPlacing(false);
+        if (order) {
+          navigate(`/tracking/${order.id}`);
+        }
+      } catch (err) {
+        setIsPlacing(false);
+        alert(err.message || 'Failed to place order. Please check item stock.');
       }
-    } catch (err) {
-      setIsPlacing(false);
-      alert(err.message || 'Failed to place order. Please check item stock.');
+      return;
+    }
+
+    // 2. ONLINE RAZORPAY / UPI
+    if (paymentMethod === 'UPI') {
+      setIsConfirmOrderModalOpen(false);
+
+      const isLoaded = await paymentService.loadRazorpayScript();
+      if (!isLoaded || typeof window === 'undefined' || !window.Razorpay) {
+        setIsPlacing(false);
+        setPaymentFeedback({
+          type: 'error',
+          message: 'Unable to connect to Razorpay payment service. Please check your network or choose Pay on Delivery (Cash).',
+        });
+        return;
+      }
+
+      // Pre-construct verified order payload
+      const preparedPayload = {
+        userPhone: activeUser.phone,
+        userName: activeUser.name,
+        societyId: selectedSociety?.id || null,
+        societyName: selectedSociety?.name || 'Direct Resident Delivery',
+        flatNo: activeUser.flatNo || 'Flat 101',
+        warehouseId: servingWarehouse?.id || null,
+        warehouseCode: servingWarehouse?.code || null,
+        orderType: totalBulkSavings > 0 ? 'BULK' : 'RETAIL',
+        subtotal: cartSubtotal,
+        bulkSavings: totalBulkSavings,
+        deliveryFee,
+        gstAmount: cartGst,
+        totalAmount: grandTotal,
+        discountCode: appliedDiscount?.code || undefined,
+        discountAmount: discountDeduction > 0 ? discountDeduction : undefined,
+        deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
+        deliverySlot: deliverySlot || defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)',
+        paymentMethod: 'UPI',
+        paymentStatus: 'PAID',
+        items: cart.map(i => {
+          const pricing = getProductBulkPricing(i, i.qty);
+          return {
+            productId: i.productId || i.id,
+            name: i.name,
+            unit: i.unit || '1 kg',
+            qty: i.qty,
+            price: i.price,
+            effectivePrice: pricing.effectiveUnitPrice,
+            totalPrice: pricing.totalWithDiscount,
+            isBulkApplied: !!pricing.isBulkEligible,
+            bulkDiscountPercent: pricing.discountPercent || 0,
+            bulkSavings: pricing.savings || 0
+          };
+        })
+      };
+
+      try {
+        const rzpOrder = await paymentService.createRazorpayOrder({
+          amount: grandTotal,
+          receipt: `RCPT_${Date.now()}`,
+          notes: {
+            userPhone: activeUser.phone,
+            societyName: selectedSociety?.name || '',
+          },
+        });
+
+        const rzp = new window.Razorpay({
+          key: rzpOrder.keyId,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency || 'INR',
+          name: 'Freshioz Produce',
+          description: 'Fresh Daily Produce Morning Delivery',
+          order_id: rzpOrder.orderId,
+          prefill: {
+            name: activeUser?.name || '',
+            contact: activeUser?.phone || '',
+          },
+          theme: {
+            color: '#234B3C',
+          },
+          modal: {
+            ondismiss: function () {
+              setIsPlacing(false);
+              setPaymentFeedback({
+                type: 'warning',
+                message: 'Payment window was closed. Your cart items are saved. You can try again or choose Pay on Delivery (Cash).',
+              });
+            },
+          },
+          handler: async function (response) {
+            try {
+              const verifiedOrder = await paymentService.verifyPayment({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                orderPayload: preparedPayload,
+              });
+              clearCart();
+              setIsPlacing(false);
+              navigate(`/tracking/${verifiedOrder.id}`);
+            } catch (vErr) {
+              setIsPlacing(false);
+              setPaymentFeedback({
+                type: 'error',
+                message: vErr.message || 'Payment signature validation failed. Please contact support.',
+              });
+            }
+          },
+        });
+
+        rzp.on('payment.failed', function (resp) {
+          setIsPlacing(false);
+          setPaymentFeedback({
+            type: 'error',
+            message: `Payment failed: ${resp.error?.description || 'Transaction declined by bank'}. Your cart items are saved. Please retry or choose Pay on Delivery.`,
+          });
+        });
+
+        rzp.open();
+      } catch (initErr) {
+        setIsPlacing(false);
+        setPaymentFeedback({
+          type: 'error',
+          message: initErr.message || 'Could not initiate Razorpay payment. Please choose Pay on Delivery.',
+        });
+      }
     }
   };
 
@@ -258,6 +409,62 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* Payment Feedback Banner (Dismissal or Failure Alert) */}
+          {paymentFeedback && (
+            <div style={{
+              padding: '14px 16px',
+              borderRadius: '12px',
+              background: paymentFeedback.type === 'error' ? '#FEF2F2' : '#FFFBEB',
+              border: paymentFeedback.type === 'error' ? '1.5px solid #FECACA' : '1.5px solid #FDE68A',
+              color: paymentFeedback.type === 'error' ? '#991B1B' : '#92400E',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px'
+            }}>
+              <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '1px' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, lineHeight: 1.4 }}>{paymentFeedback.message}</div>
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod('PAY_ON_DELIVERY');
+                      setPaymentFeedback(null);
+                    }}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid currentColor',
+                      background: 'transparent',
+                      color: 'inherit',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Switch to Pay on Delivery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentFeedback(null)}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#64748B',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 3. Payment Method */}
           <div style={{
             background: '#FFFFFF',
@@ -271,30 +478,40 @@ export default function CheckoutPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* --- PHASE 1 SUSPENSION: Instant Online UPI payment is commented out for Phase 1 (Cash on Delivery only) ---
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 14px',
-                borderRadius: '12px',
-                border: paymentMethod === 'UPI' ? '2px solid #234B3C' : '1px solid #E5ECE7',
-                background: paymentMethod === 'UPI' ? '#F6FAF7' : '#FFF',
-                cursor: 'pointer'
-              }}>
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === 'UPI'}
-                  onChange={() => setPaymentMethod('PAY_ON_DELIVERY')}
-                  style={{ accentColor: '#234B3C' }}
-                />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B' }}>Instant UPI (GPay, PhonePe, Paytm)</div>
-                  <div style={{ fontSize: '12px', color: '#52635A' }}>Scan or pay via installed UPI app</div>
-                </div>
-              </label>
-              --- END PHASE 1 SUSPENSION --- */}
+              {/* Online Payment Option - Rendered when enabled in Admin Gateway Settings */}
+              {gatewayConfig.enabled && (
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  border: paymentMethod === 'UPI' ? '2px solid #234B3C' : '1px solid #E5ECE7',
+                  background: paymentMethod === 'UPI' ? '#F6FAF7' : '#FFF',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === 'UPI'}
+                    onChange={() => setPaymentMethod('UPI')}
+                    style={{ accentColor: '#234B3C' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>⚡ Instant Online & UPI (GPay, PhonePe, Paytm, Cards)</span>
+                      {gatewayConfig.activeMode === 'TEST' && (
+                        <span style={{ fontSize: '10px', background: '#DBEAFE', color: '#1E40AF', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                          SANDBOX
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#52635A' }}>
+                      Pay seamlessly via installed UPI apps, Debit/Credit Card or NetBanking
+                    </div>
+                  </div>
+                </label>
+              )}
 
               <label style={{
                 display: 'flex',
@@ -302,8 +519,8 @@ export default function CheckoutPage() {
                 gap: '12px',
                 padding: '14px 16px',
                 borderRadius: '12px',
-                border: '2px solid #234B3C',
-                background: '#F6FAF7',
+                border: paymentMethod === 'PAY_ON_DELIVERY' ? '2px solid #234B3C' : '1px solid #E5ECE7',
+                background: paymentMethod === 'PAY_ON_DELIVERY' ? '#F6FAF7' : '#FFF',
                 cursor: 'pointer'
               }}>
                 <input
@@ -670,10 +887,8 @@ export default function CheckoutPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #CBD5E1' }}>
                 <span style={{ color: '#64748B', fontWeight: 600 }}>Payment Method:</span>
-                <span style={{ color: '#B45309', fontWeight: 800 }}>
-                  {/* Phase 1: UPI commented out; Pay on Delivery only */}
-                  {/* {paymentMethod === 'UPI' ? 'Instant UPI (GPay/PhonePe)' : 'Pay on Delivery (Cash on Delivery)'} */}
-                  Pay on Delivery (Cash on Delivery)
+                <span style={{ color: paymentMethod === 'UPI' ? '#166534' : '#B45309', fontWeight: 800 }}>
+                  {paymentMethod === 'UPI' ? '⚡ Instant UPI / Cards (Razorpay)' : '💵 Pay on Delivery (Cash on Delivery)'}
                 </span>
               </div>
 

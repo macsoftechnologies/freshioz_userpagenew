@@ -411,12 +411,8 @@ export function StoreProvider({ children }) {
       discountAmount: appliedDiscountVal > 0 ? appliedDiscountVal : undefined,
       deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
       deliverySlot: deliverySlot || defaultSlotLabel,
-      // Phase 1: Only Cash on Delivery (PAY_ON_DELIVERY) is permitted.
-      // Instant online UPI is commented out so nobody can submit or apply UPI orders from UI or console.
-      // paymentMethod: paymentMethod || 'UPI',
-      // paymentStatus: paymentMethod === 'UPI' ? 'PAID' : 'PENDING_COD',
-      paymentMethod: 'PAY_ON_DELIVERY',
-      paymentStatus: 'PENDING_COD',
+      paymentMethod: paymentMethod === 'UPI' || paymentMethod === 'ONLINE_RAZORPAY' ? 'UPI' : 'PAY_ON_DELIVERY',
+      paymentStatus: (paymentMethod === 'UPI' || paymentMethod === 'ONLINE_RAZORPAY') ? 'PAID' : 'PENDING_COD',
       items: cart.map(i => {
         const pricing = getProductBulkPricing(i, i.qty);
         return {
