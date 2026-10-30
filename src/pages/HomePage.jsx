@@ -348,9 +348,9 @@ export default function HomePage() {
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#EBF2EE', color: '#234B3C', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
               <Clock size={24} />
             </div>
-            <h4 style={{ fontSize: '17px', marginBottom: '8px' }}>1. Orders Batched at 9:00 PM</h4>
+            <h4 style={{ fontSize: '17px', marginBottom: '8px' }}>1. Evening Order Lock</h4>
             <p style={{ fontSize: '13px', color: '#52635A', lineHeight: '1.5' }}>
-              We consolidate all orders across the society before the warehouse cut-off so we know exact daily requirements.
+              We consolidate all orders across your society before daily cut-off so we procure exact farm quantities with zero food waste.
             </p>
           </div>
 
@@ -364,9 +364,9 @@ export default function HomePage() {
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#EBF7E5', color: '#78B159', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
               <Leaf size={24} />
             </div>
-            <h4 style={{ fontSize: '17px', marginBottom: '8px' }}>2. Dawn 4:00 AM Mandi Harvest</h4>
+            <h4 style={{ fontSize: '17px', marginBottom: '8px' }}>2. Dawn Mandi Harvest</h4>
             <p style={{ fontSize: '13px', color: '#52635A', lineHeight: '1.5' }}>
-              Our procurement officers buy fresh-cut crops directly from APMC mandi farmers at morning auction rates. Zero stale stock.
+              Our procurement officers buy fresh-cut crops directly from APMC mandi farmers at morning auction rates. Zero cold-room stale stock.
             </p>
           </div>
 
@@ -380,7 +380,7 @@ export default function HomePage() {
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#FFF5EB', color: '#F28E14', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
               <Truck size={24} />
             </div>
-            <h4 style={{ fontSize: '17px', marginBottom: '8px' }}>3. Delivered by 7:00 AM</h4>
+            <h4 style={{ fontSize: '17px', marginBottom: '8px' }}>3. Morning Doorstep Drop</h4>
             <p style={{ fontSize: '13px', color: '#52635A', lineHeight: '1.5' }}>
               Graded, quality checked, tagged flat-wise, and dispatched to your society desk or doorstep before your morning breakfast.
             </p>
