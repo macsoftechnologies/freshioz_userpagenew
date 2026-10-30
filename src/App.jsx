@@ -96,8 +96,8 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
-          {/* Dedicated Institutional & Bulk Wholesale Crates Page */}
-          <Route path="/wholesale" element={<WholesalePage />} />
+          {/* Dedicated Institutional & Bulk Wholesale Crates Page - Commented out for retail concentration */}
+          {/* <Route path="/wholesale" element={<WholesalePage />} /> */}
           <Route path="/society-portal" element={<SocietyPartnerPortalPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/tracking/:orderId" element={<OrderTrackingPage />} />

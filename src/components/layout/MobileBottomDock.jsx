@@ -31,7 +31,7 @@ export default function MobileBottomDock() {
         <span>Categories</span>
       </NavLink>
 
-      {/* 3. Bulk / Wholesale */}
+      {/* 3. Bulk / Wholesale - Commented out for retail focus
       <NavLink
         to="/wholesale"
         className={({ isActive }) => `dock-item-btn ${isActive ? 'active' : ''}`}
@@ -39,6 +39,7 @@ export default function MobileBottomDock() {
         <Package size={20} />
         <span>Wholesale</span>
       </NavLink>
+      */}
 
       {/* 4. Orders / Tracking */}
       <button

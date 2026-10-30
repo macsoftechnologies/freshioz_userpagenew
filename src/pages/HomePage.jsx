@@ -181,7 +181,7 @@ export default function HomePage() {
           <div className="section-title-wrap">
             <h2 className="section-heading-clean">
               <span>Dawn Mandi Produce</span>
-              <span className="section-heading-badge">Next-Day</span>
+              {/* <span className="section-heading-badge">Next-Day</span> */}
             </h2>
             <p className="section-subheading desktop-only-text">
               Procured from APMC farmers at dawn and delivered tomorrow morning.
