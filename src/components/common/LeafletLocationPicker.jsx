@@ -45,6 +45,32 @@ export default function LeafletLocationPicker({
   const [isDetecting, setIsDetecting] = useState(false);
   const [addressStatus, setAddressStatus] = useState('Coordinates tagged');
 
+  // Reverse geocode lat/lng to clean address using OpenStreetMap Nominatim
+  const reverseGeocode = async (lat, lon) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
+        { headers: { 'Accept': 'application/json', 'Accept-Language': 'en' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.address) {
+          const a = data.address;
+          const parts = [
+            a.road || a.suburb || a.neighbourhood || a.residential,
+            a.city || a.town || a.village || a.county,
+            a.state
+          ].filter(Boolean);
+          if (parts.length > 0) return parts.join(', ');
+        }
+        if (data && data.display_name) return data.display_name;
+      }
+    } catch (e) {
+      console.warn('Nominatim reverse geocode note:', e);
+    }
+    return `Lat ${lat}, Lng ${lon}`;
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -65,28 +91,29 @@ export default function LeafletLocationPicker({
     markerRef.current = marker;
 
     // Handle marker drag
-    marker.on('dragend', () => {
+    marker.on('dragend', async () => {
       const position = marker.getLatLng();
-      const newCoords = {
-        lat: Number(position.lat.toFixed(5)),
-        lng: Number(position.lng.toFixed(5))
-      };
+      const lat = Number(position.lat.toFixed(5));
+      const lng = Number(position.lng.toFixed(5));
+      const newCoords = { lat, lng };
       setCoords(newCoords);
-      setAddressStatus(`Tagged: Lat ${newCoords.lat}, Lng ${newCoords.lng}`);
-      if (onLocationChange) onLocationChange(newCoords);
+      setAddressStatus('Resolving address from coordinates...');
+      const addr = await reverseGeocode(lat, lng);
+      setAddressStatus(`Tagged: ${addr}`);
+      if (onLocationChange) onLocationChange({ ...newCoords, address: addr });
     });
 
     // Handle map click
-    map.on('click', (e) => {
-      const { lat, lng } = e.latlng;
-      const newCoords = {
-        lat: Number(lat.toFixed(5)),
-        lng: Number(lng.toFixed(5))
-      };
+    map.on('click', async (e) => {
+      const lat = Number(e.latlng.lat.toFixed(5));
+      const lng = Number(e.latlng.lng.toFixed(5));
+      const newCoords = { lat, lng };
       marker.setLatLng([lat, lng]);
       setCoords(newCoords);
-      setAddressStatus(`Tagged: Lat ${newCoords.lat}, Lng ${newCoords.lng}`);
-      if (onLocationChange) onLocationChange(newCoords);
+      setAddressStatus('Resolving address from coordinates...');
+      const addr = await reverseGeocode(lat, lng);
+      setAddressStatus(`Tagged: ${addr}`);
+      if (onLocationChange) onLocationChange({ ...newCoords, address: addr });
     });
 
     return () => {
@@ -96,23 +123,25 @@ export default function LeafletLocationPicker({
 
   const handleAutoDetect = async () => {
     setIsDetecting(true);
-    setAddressStatus('Detecting location...');
+    setAddressStatus('Acquiring hardware GPS coordinates...');
 
-    const applyPos = (latitude, longitude, statusMsg) => {
-      const newCoords = {
-        lat: Number(latitude.toFixed(5)),
-        lng: Number(longitude.toFixed(5))
-      };
+    const applyPos = async (latitude, longitude) => {
+      const lat = Number(latitude.toFixed(5));
+      const lng = Number(longitude.toFixed(5));
+      const newCoords = { lat, lng };
       setCoords(newCoords);
-      setIsDetecting(false);
-      setAddressStatus(statusMsg || `Auto-detected Location: Lat ${newCoords.lat}, Lng ${newCoords.lng}`);
 
       if (mapInstanceRef.current && markerRef.current) {
         mapInstanceRef.current.setView([latitude, longitude], 16);
         markerRef.current.setLatLng([latitude, longitude]);
       }
 
-      if (onLocationChange) onLocationChange(newCoords);
+      setAddressStatus('Resolving GPS address details...');
+      const addr = await reverseGeocode(lat, lng);
+      setAddressStatus(`GPS: ${addr}`);
+      setIsDetecting(false);
+
+      if (onLocationChange) onLocationChange({ ...newCoords, address: addr });
     };
 
     if (navigator.geolocation) {
@@ -127,29 +156,15 @@ export default function LeafletLocationPicker({
 
       try {
         const pos = await getPos(true, 5000).catch(() => getPos(false, 6000));
-        applyPos(pos.coords.latitude, pos.coords.longitude, `Device GPS: Lat ${pos.coords.latitude.toFixed(4)}, Lng ${pos.coords.longitude.toFixed(4)}`);
+        await applyPos(pos.coords.latitude, pos.coords.longitude);
         return;
       } catch (err) {
-        console.warn('Browser GPS error, checking IP network fallback:', err);
+        console.warn('Browser GPS error:', err);
       }
-    }
-
-    // IP Geolocation fallback
-    try {
-      const res = await fetch('https://ipwho.is/');
-      if (res.ok) {
-        const ipData = await res.json();
-        if (ipData && ipData.success !== false && ipData.latitude && ipData.longitude) {
-          applyPos(ipData.latitude, ipData.longitude, `Positioned to network: ${ipData.city || 'your area'}. Click on map to adjust pin.`);
-          return;
-        }
-      }
-    } catch (ipErr) {
-      console.warn('IP fallback failed:', ipErr);
     }
 
     setIsDetecting(false);
-    setAddressStatus('Could not detect GPS. Please click anywhere on the map to pin location.');
+    setAddressStatus('Device GPS unavailable. Please click anywhere on the map to pin drop location.');
   };
 
   return (
