@@ -2414,10 +2414,10 @@ export default function UserProfilePage({ forcedTab }) {
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
-                  title="Print or Save as PDF"
+                  title="Download GST Tax Invoice or Save as PDF"
                 >
                   <Printer size={14} />
-                  <span>Print</span>
+                  <span>Download PDF / Print</span>
                 </button>
 
                 <button
@@ -2507,6 +2507,11 @@ export default function UserProfilePage({ forcedTab }) {
                   <div style={{ color: '#52635A', marginTop: '2px' }}>
                     Slot: <strong>{viewingReceiptOrder.deliverySlot || 'Dawn Drop (7:00 AM)'}</strong>
                   </div>
+                  {viewingReceiptOrder.razorpayPaymentId && (
+                    <div style={{ color: '#52635A', marginTop: '2px', fontSize: '11.5px' }}>
+                      Txn Ref: <strong style={{ color: '#15221B', fontFamily: 'monospace' }}>{viewingReceiptOrder.razorpayPaymentId}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
 
