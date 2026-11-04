@@ -1367,7 +1367,7 @@ export default function UserProfilePage({ forcedTab }) {
                                 </>
                               )}
 
-                              {isPending ? (
+                              {isPending && (
                                 <Link
                                   to={`/tracking/${order.id}`}
                                   style={{
@@ -1389,31 +1389,31 @@ export default function UserProfilePage({ forcedTab }) {
                                   <span>Track Live</span>
                                   <ChevronRight size={13} />
                                 </Link>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setViewingReceiptOrder(order)}
-                                  style={{
-                                    background: '#F8FAF9',
-                                    border: '1px solid #D5E2DA',
-                                    color: '#234B3C',
-                                    padding: '7px 14px',
-                                    borderRadius: '9999px',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '5px',
-                                    whiteSpace: 'nowrap',
-                                    flexShrink: 0
-                                  }}
-                                >
-                                  <FileText size={12} />
-                                  <span>Receipt</span>
-                                </button>
                               )}
+
+                              <button
+                                type="button"
+                                onClick={() => setViewingReceiptOrder(order)}
+                                style={{
+                                  background: '#F8FAF9',
+                                  border: '1px solid #D5E2DA',
+                                  color: '#234B3C',
+                                  padding: '7px 14px',
+                                  borderRadius: '9999px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '5px',
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <FileText size={12} />
+                                <span>Receipt & Invoice</span>
+                              </button>
                             </div>
                           </div>
                         </div>
