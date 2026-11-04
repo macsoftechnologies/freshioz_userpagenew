@@ -95,6 +95,7 @@ export default function WholesalePage() {
 
       {(() => {
         const wholesaleProducts = (store.products || []).filter(p => 
+          (!p.status || p.status === 'ACTIVE') &&
           p.hasWholesale !== false && (
             Boolean(p.wholesaleUnit) || 
             (parseFloat(p.bulkMinQty) > 0 && parseFloat(p.bulkDiscountPercent) > 0) ||

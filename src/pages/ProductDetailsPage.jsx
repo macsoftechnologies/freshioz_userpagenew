@@ -65,7 +65,21 @@ export default function ProductDetailsPage() {
     return () => { isMounted = false; };
   }, [product?.id]);
 
-  if (!product) {
+  if (!product || product.status === 'INACTIVE') {
+    return (
+      <div className="section-container" style={{ padding: '80px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '12px' }}>🌱</div>
+        <h2>Produce Currently Off-Season</h2>
+        <p style={{ color: '#83968D', marginTop: '8px', maxWidth: '440px', margin: '8px auto 20px' }}>
+          This produce item is currently unavailable or in its non-harvest season. Check back when fresh harvests arrive!
+        </p>
+        <Link to="/catalog" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          Browse In-Season Catalog
+        </Link>
+      </div>
+    );
+  }
+  if (false && !product) {
     return (
       <div className="section-container" style={{ padding: '80px 20px', textAlign: 'center' }}>
         <h2>Produce Item Not Found</h2>

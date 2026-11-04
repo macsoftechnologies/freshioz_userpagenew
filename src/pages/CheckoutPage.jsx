@@ -151,6 +151,11 @@ export default function CheckoutPage() {
   // Pre-placement validation: opens the confirmation popup
   const handleInitiatePlaceOrder = (e) => {
     e.preventDefault();
+
+    if (servingWarehouse?.status === 'INACTIVE') {
+      alert(`Deliveries to ${selectedSociety?.name || 'your society'} are temporarily paused due to regional hub maintenance.`);
+      return;
+    }
     setIsConfirmOrderModalOpen(true);
   };
 
@@ -722,6 +727,7 @@ export default function CheckoutPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
+
                         handleApplyDiscount();
                       }
                     }}
@@ -796,14 +802,32 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {servingWarehouse?.status === 'INACTIVE' && (
+            <div style={{
+              background: '#FEF2F2',
+              border: '1.5px solid #FCA5A5',
+              color: '#991B1B',
+              padding: '12px 14px',
+              borderRadius: '10px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚠️ Deliveries to {selectedSociety?.name || 'your society'} are temporarily paused due to regional hub maintenance. Ordering is temporarily unavailable.</span>
+            </div>
+          )}
+
           {/* Place Order CTA */}
           <button
             type="button"
             className="checkout-action-btn"
-            disabled={isPlacing}
+            disabled={isPlacing || servingWarehouse?.status === 'INACTIVE'}
             onClick={handleInitiatePlaceOrder}
           >
-            {isPlacing ? 'Confirming with Warehouse...' : `Place Next-Day Order • ₹${grandTotal}`}
+            {servingWarehouse?.status === 'INACTIVE' ? 'Fulfillment Paused for Society' : isPlacing ? 'Confirming with Warehouse...' : `Place Next-Day Order • ₹${grandTotal}`}
           </button>
         </div>
       </div>

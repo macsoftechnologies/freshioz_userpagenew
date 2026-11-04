@@ -29,8 +29,9 @@ export default function HomePage() {
     refetchCatalog
   } = useStore();
 
-  const dailySpecials = store.products || [];
-  const wholesaleBestsellers = (store.products || []).filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);
+  const activeProducts = (store.products || []).filter(p => !p.status || p.status === 'ACTIVE');
+  const dailySpecials = activeProducts;
+  const wholesaleBestsellers = activeProducts.filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);
 
   return (
     <div>

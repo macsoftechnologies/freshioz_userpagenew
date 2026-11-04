@@ -37,6 +37,7 @@ export default function CatalogPage() {
   };
 
   const filteredProducts = (store.products || []).filter(p => {
+    if (p.status && p.status !== 'ACTIVE') return false;
     const matchesCat = currentCat === 'ALL' || matchesProductCategory(p, currentCat, store.categories);
     const matchesSearch = !searchQuery || 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
