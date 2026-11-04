@@ -478,8 +478,8 @@ export function StoreProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           societyName: leadData.societyName,
-          contactName: leadData.requesterName || leadData.contactName || 'Resident Lead',
-          contactPhone: leadData.requesterPhone || leadData.contactPhone || '9876543210',
+          contactName: (leadData.requesterName || leadData.contactName || '').trim(),
+          contactPhone: (leadData.requesterPhone || leadData.contactPhone || '').replace(/\D/g, '').trim(),
           contactRole: leadData.contactRole || 'Resident',
           flatCount: Number(leadData.estimatedFlats || leadData.flatCount) || undefined,
           clusterZone: leadData.clusterZone || leadData.city || undefined,
