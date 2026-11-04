@@ -94,38 +94,62 @@ export default function LeafletLocationPicker({
     };
   }, []);
 
-  const handleAutoDetect = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-      return;
+  const handleAutoDetect = async () => {
+    setIsDetecting(true);
+    setAddressStatus('Detecting location...');
+
+    const applyPos = (latitude, longitude, statusMsg) => {
+      const newCoords = {
+        lat: Number(latitude.toFixed(5)),
+        lng: Number(longitude.toFixed(5))
+      };
+      setCoords(newCoords);
+      setIsDetecting(false);
+      setAddressStatus(statusMsg || `Auto-detected Location: Lat ${newCoords.lat}, Lng ${newCoords.lng}`);
+
+      if (mapInstanceRef.current && markerRef.current) {
+        mapInstanceRef.current.setView([latitude, longitude], 16);
+        markerRef.current.setLatLng([latitude, longitude]);
+      }
+
+      if (onLocationChange) onLocationChange(newCoords);
+    };
+
+    if (navigator.geolocation) {
+      const getPos = (highAcc, timeoutMs) =>
+        new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: highAcc,
+            timeout: timeoutMs,
+            maximumAge: 60000,
+          });
+        });
+
+      try {
+        const pos = await getPos(true, 5000).catch(() => getPos(false, 6000));
+        applyPos(pos.coords.latitude, pos.coords.longitude, `Device GPS: Lat ${pos.coords.latitude.toFixed(4)}, Lng ${pos.coords.longitude.toFixed(4)}`);
+        return;
+      } catch (err) {
+        console.warn('Browser GPS error, checking IP network fallback:', err);
+      }
     }
 
-    setIsDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const newCoords = {
-          lat: Number(latitude.toFixed(5)),
-          lng: Number(longitude.toFixed(5))
-        };
-        setCoords(newCoords);
-        setIsDetecting(false);
-        setAddressStatus(`Auto-detected GPS Location: Lat ${newCoords.lat}, Lng ${newCoords.lng}`);
-
-        if (mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.setView([latitude, longitude], 16);
-          markerRef.current.setLatLng([latitude, longitude]);
+    // IP Geolocation fallback
+    try {
+      const res = await fetch('https://ipwho.is/');
+      if (res.ok) {
+        const ipData = await res.json();
+        if (ipData && ipData.success !== false && ipData.latitude && ipData.longitude) {
+          applyPos(ipData.latitude, ipData.longitude, `Positioned to network: ${ipData.city || 'your area'}. Click on map to adjust pin.`);
+          return;
         }
+      }
+    } catch (ipErr) {
+      console.warn('IP fallback failed:', ipErr);
+    }
 
-        if (onLocationChange) onLocationChange(newCoords);
-      },
-      (err) => {
-        setIsDetecting(false);
-        console.warn('Geolocation error:', err);
-        setAddressStatus('Could not detect GPS. Please click on the map to pin.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    setIsDetecting(false);
+    setAddressStatus('Could not detect GPS. Please click anywhere on the map to pin location.');
   };
 
   return (
