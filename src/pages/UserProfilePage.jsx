@@ -852,27 +852,45 @@ export default function UserProfilePage({ forcedTab }) {
                       </div>
                     </div>
 
-                    {/* Cancellation Note if cancelled */}
-                    {isCancelled && order.cancelledReason && (
+                    {/* Cancellation Note & Refund Status */}
+                    {isCancelled && (
                       <div style={{
                         background: '#FFF5F5',
-                        border: '1px solid #FED7D7',
+                        border: '1.5px solid #FECACA',
                         borderRadius: '10px',
-                        padding: '10px 14px',
+                        padding: '12px 14px',
                         fontSize: '12.5px',
-                        color: '#9B2C2C',
+                        color: '#991B1B',
                         marginBottom: '14px',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
+                        flexDirection: 'column',
+                        gap: '6px'
                       }}>
-                        <AlertCircle size={15} color="#E53E3E" />
-                        <div>
-                          <strong>Cancelled:</strong> {order.cancelledReason || 'Cancelled before cutoff'}
-                          {order.paymentMethod === 'PAY_ON_DELIVERY' || order.paymentMethod === 'COD' || order.paymentStatus === 'PENDING_COD'
-                            ? ' • No payment collected (Pay on Delivery)'
-                            : ''}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <AlertCircle size={16} color="#DC2626" />
+                          <div>
+                            <strong>Order Cancelled:</strong> {order.cancelledReason || 'Placed order by mistake'}
+                          </div>
                         </div>
+                        {order.paymentStatus === 'PAID' || order.razorpayPaymentId ? (
+                          <div style={{ background: '#FFFFFF', border: '1px solid #FED7D7', borderRadius: '8px', padding: '8px 12px', marginTop: '4px', fontSize: '12px', color: '#7F1D1D' }}>
+                            <div style={{ fontWeight: 800, color: '#991B1B' }}>
+                              💸 Refund of ₹{order.totalAmount} Initiated
+                            </div>
+                            <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '2px' }}>
+                              Auto-refund will be credited back to your original payment method (Razorpay Netbanking / UPI).
+                            </div>
+                            {order.razorpayPaymentId && (
+                              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                                Razorpay Txn Ref: <code style={{ fontWeight: 700, color: '#0F172A' }}>{order.razorpayPaymentId}</code> • Usually reflects within 5–7 business days.
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '11.5px', color: '#7F1D1D', marginTop: '2px' }}>
+                            • No payment was deducted (Pay on Delivery).
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -955,85 +973,87 @@ export default function UserProfilePage({ forcedTab }) {
                           </button>
                         )}
 
-                        {/* DELIVERED: Rate, Reorder and Receipt button */}
+                        {/* Rate button for delivered orders */}
                         {isDelivered && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenReviewModal(order)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '5px',
-                                background: '#FEF3C7',
-                                color: '#92400E',
-                                border: '1px solid #FDE68A',
-                                padding: '7px 14px',
-                                borderRadius: '9999px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <Star size={13} fill="#F59E0B" color="#F59E0B" />
-                              <span>Rate</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleReorder(order)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '5px',
-                                background: '#EBF2EE',
-                                color: '#234B3C',
-                                border: '1px solid #C8DBD0',
-                                padding: '7px 14px',
-                                borderRadius: '9999px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <RotateCcw size={13} />
-                              <span>Reorder</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setViewingReceiptOrder(order)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '5px',
-                                background: '#F8FAF9',
-                                border: '1px solid #D5E2DA',
-                                color: '#234B3C',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                borderRadius: '9999px',
-                                padding: '7px 14px',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <FileText size={13} />
-                              <span>Receipt</span>
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReviewModal(order)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '5px',
+                              background: '#FEF3C7',
+                              color: '#92400E',
+                              border: '1px solid #FDE68A',
+                              padding: '7px 14px',
+                              borderRadius: '9999px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <Star size={13} fill="#F59E0B" color="#F59E0B" />
+                            <span>Rate</span>
+                          </button>
                         )}
+
+                        {/* Reorder button for delivered or cancelled orders */}
+                        {(isDelivered || isCancelled) && (
+                          <button
+                            type="button"
+                            onClick={() => handleReorder(order)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '5px',
+                              background: '#EBF2EE',
+                              color: '#234B3C',
+                              border: '1px solid #C8DBD0',
+                              padding: '7px 14px',
+                              borderRadius: '9999px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <RotateCcw size={13} />
+                            <span>Reorder</span>
+                          </button>
+                        )}
+
+                        {/* Digital Tax Invoice & Receipt (Available for all customer orders) */}
+                        <button
+                          type="button"
+                          onClick={() => setViewingReceiptOrder(order)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px',
+                            background: '#F8FAF9',
+                            border: '1px solid #D5E2DA',
+                            color: '#234B3C',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            borderRadius: '9999px',
+                            padding: '7px 14px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <FileText size={13} />
+                          <span>Receipt</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2456,15 +2476,15 @@ export default function UserProfilePage({ forcedTab }) {
                 <div style={{ textAlign: 'right' }}>
                   <span style={{
                     display: 'inline-block',
-                    background: viewingReceiptOrder.status === 'DELIVERED' ? '#EBF7E5' : '#FEF3C7',
-                    color: viewingReceiptOrder.status === 'DELIVERED' ? '#234B3C' : '#92400E',
+                    background: viewingReceiptOrder.status === 'DELIVERED' ? '#EBF7E5' : viewingReceiptOrder.status === 'CANCELLED' ? '#FEE2E2' : '#FEF3C7',
+                    color: viewingReceiptOrder.status === 'DELIVERED' ? '#234B3C' : viewingReceiptOrder.status === 'CANCELLED' ? '#991B1B' : '#92400E',
                     fontWeight: 800,
                     fontSize: '11.5px',
                     padding: '3px 10px',
                     borderRadius: '9999px',
                     textTransform: 'uppercase'
                   }}>
-                    {viewingReceiptOrder.status === 'DELIVERED' ? 'Delivered & Completed' : viewingReceiptOrder.status}
+                    {viewingReceiptOrder.status === 'DELIVERED' ? 'Delivered & Completed' : viewingReceiptOrder.status === 'CANCELLED' ? 'Cancelled (Refund Initiated)' : viewingReceiptOrder.status}
                   </span>
                   <div style={{ fontSize: '12px', color: '#15221B', fontWeight: 700, marginTop: '6px' }}>
                     Receipt Date: {viewingReceiptOrder.deliveryDate || new Date().toLocaleDateString('en-IN')}
@@ -2574,7 +2594,7 @@ export default function UserProfilePage({ forcedTab }) {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52635A' }}>
                     <span>Community Delivery:</span>
-                    <span style={{ color: '#166534', fontWeight: 700 }}>FREE (₹0)</span>
+                    <span style={{ color: Number(viewingReceiptOrder.deliveryFee) > 0 ? '#15221B' : '#166534', fontWeight: 700 }}>{Number(viewingReceiptOrder.deliveryFee) > 0 ? `₹${viewingReceiptOrder.deliveryFee}` : 'FREE (₹0)'}</span>
                   </div>
 
                   <div style={{
