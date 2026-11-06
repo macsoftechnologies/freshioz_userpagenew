@@ -120,16 +120,24 @@ export default function HomePage() {
         */}
 
         {/* Modernized Freshioz Express Delivery Van Animated Hero (< 1024px) */}
-        <ModernizedVanTransitHero 
+        {/* <ModernizedVanTransitHero 
           mode="retail"
           onClick={() => {
             if (!activeUser) setIsAuthModalOpen(true);
             navigate('/catalog');
           }}
-        />
+        /> */}
 
         {/* Desktop Spacious Hero Card (>= 1024px) */}
-        <div className="hero-glass-card hero-desktop-only">
+        <div 
+          className="hero-glass-card"
+          style={{
+            backgroundImage: "linear-gradient(90deg, #173328 0%, rgba(23, 51, 40, 0.95) 36%, rgba(23, 51, 40, 0.25) 54%, rgba(23, 51, 40, 0) 68%), url('/banners/freshioz-hero-banner.webp')",
+            backgroundPosition: "right center",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "cover"
+          }}
+        >
           <div className="hero-left-content">
             <div className="hero-tag-badge">
               <Leaf size={13} color="#78B159" />
