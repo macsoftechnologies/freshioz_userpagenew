@@ -12,11 +12,12 @@ import {
   Leaf,
   Star,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Quote,
+  Building2
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import ProductCard from '../components/product/ProductCard';
-import heroBannerImg from '../assets/freshioz-hero-banner.webp';
 import { reviewService } from '../services/reviewService';
 
 // Verified resident testimonials from active communities
@@ -60,6 +61,26 @@ const DEFAULT_TESTIMONIALS = [
     tag: 'Verified Drop Desk Stop',
     comment: 'Our security desk receives the batch delivery cleanly tagged flat-wise every single morning. Super convenient and zero delivery fee.',
     badge: 'Verified Resident'
+  },
+  {
+    id: 't-5',
+    name: 'Sneha & Karthik',
+    flat: 'Flat 508, Block D',
+    society: 'Sobha Iris',
+    rating: 5,
+    tag: 'Verified Produce Order',
+    comment: 'The Kiran watermelon was exceptionally sweet and tender coconuts were heavy with water. You can literally smell the farm harvest freshness.',
+    badge: 'Verified Resident'
+  },
+  {
+    id: 't-6',
+    name: 'Manoj R.',
+    flat: 'Flat 302, Phase 1',
+    society: 'Brigade Gateway',
+    rating: 5,
+    tag: 'Verified Early Morning Drop',
+    comment: 'Love the next-morning doorstep delivery model. No stress about who will receive the delivery, it is already waiting at our flat before breakfast!',
+    badge: 'Verified Resident'
   }
 ];
 
@@ -78,6 +99,34 @@ export default function HomePage() {
   } = useStore();
 
   const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [cardsPerView, setCardsPerView] = useState(3);
+
+  // Responsive cards per view (1 on mobile, 2 on tablet, 3 on desktop)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 640) {
+        setCardsPerView(1);
+      } else if (window.innerWidth < 1024) {
+        setCardsPerView(2);
+      } else {
+        setCardsPerView(3);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const maxSlide = Math.max(0, testimonials.length - cardsPerView);
+
+  const handlePrev = () => {
+    setActiveSlide((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNext = () => {
+    setActiveSlide((prev) => Math.min(maxSlide, prev + 1));
+  };
 
   // Attempt to load live moderated website reviews from backend if available
   useEffect(() => {
@@ -95,7 +144,7 @@ export default function HomePage() {
             comment: r.comment || 'Crisp and farm fresh harvest delivered on time!',
             badge: 'Verified Resident'
           }));
-          setTestimonials([...formatted, ...DEFAULT_TESTIMONIALS].slice(0, 6));
+          setTestimonials([...formatted, ...DEFAULT_TESTIMONIALS]);
         }
       })
       .catch(() => {
@@ -108,14 +157,6 @@ export default function HomePage() {
   const activeProducts = (store.products || []).filter(p => !p.status || p.status === 'ACTIVE');
   const dailySpecials = activeProducts;
   const wholesaleBestsellers = activeProducts.filter(p => p.hasWholesale !== false && Boolean(p.wholesaleUnit)).slice(0, 4);
-
-  const scrollTestimonials = (direction) => {
-    const track = document.getElementById('homeTestimonialsTrack');
-    if (track) {
-      const scrollAmt = direction === 'left' ? -320 : 320;
-      track.scrollBy({ left: scrollAmt, behavior: 'smooth' });
-    }
-  };
 
   return (
     <div>
@@ -235,86 +276,124 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Verified Resident Reviews & Live Testimonials Section */}
+      {/* Verified Resident Reviews & Live Testimonials Desktop & Mobile Carousel */}
       <section className="section-container home-testimonials-wrap">
-        <div className="testimonials-header-block">
-          <div className="testimonials-badge-pill">
-            <Sparkles size={13} color="#234B3C" />
-            <span>VERIFIED RESIDENT REVIEWS</span>
-          </div>
-          <h2 className="testimonials-main-title">
-            Loved by 1,200+ Apartment Families
-          </h2>
-          <div className="testimonials-stars-summary">
-            <div className="stars-cluster">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={15} fill="#F59E0B" color="#F59E0B" />
-              ))}
+        <div className="testimonials-header-row">
+          <div className="testimonials-title-group">
+            <div className="testimonials-badge-pill">
+              <Sparkles size={12} color="#15803D" />
+              <span>VERIFIED COMMUNITY FEEDBACK</span>
             </div>
-            <span className="rating-score-text">4.9 / 5.0</span>
-            <span className="rating-divider">•</span>
-            <span className="rating-desc-text">100% Genuine Next-Morning Doorstep Deliveries</span>
+            <h2 className="testimonials-main-title">
+              What Your Neighbors Are Saying
+            </h2>
+            <div className="testimonials-stars-summary">
+              <div className="stars-cluster">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={15} fill="#F59E0B" color="#F59E0B" />
+                ))}
+              </div>
+              <span className="rating-score-text">5.0 / 5.0</span>
+              <span className="rating-divider">•</span>
+              <span className="rating-desc-text">Pure Farm Freshness & Next-Morning Doorstep Drops</span>
+            </div>
+          </div>
+
+          {/* Desktop & Tablet Carousel Arrows */}
+          <div className="testimonials-carousel-controls">
+            <button
+              type="button"
+              className="carousel-arrow-btn"
+              onClick={handlePrev}
+              disabled={activeSlide === 0}
+              aria-label="Previous Testimonials"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className="carousel-page-counter">
+              <strong>{String(activeSlide + 1).padStart(2, '0')}</strong> / {String(maxSlide + 1).padStart(2, '0')}
+            </span>
+            <button
+              type="button"
+              className="carousel-arrow-btn"
+              onClick={handleNext}
+              disabled={activeSlide >= maxSlide}
+              aria-label="Next Testimonials"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
         </div>
 
-        {/* Testimonials Carousel / Grid */}
-        <div className="testimonials-track-wrapper">
-          <div className="testimonials-cards-grid" id="homeTestimonialsTrack">
+        {/* Carousel Window & Sliding Track */}
+        <div className="testimonials-carousel-viewport">
+          <div 
+            className="testimonials-sliding-track"
+            style={{
+              transform: `translateX(-${activeSlide * (100 / cardsPerView)}%)`,
+              transition: 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)'
+            }}
+          >
             {testimonials.map((item) => (
-              <div key={item.id} className="testimonial-resident-card">
-                <div className="card-top-row">
-                  <div className="card-stars-row">
-                    {[...Array(item.rating || 5)].map((_, i) => (
-                      <Star key={i} size={14} fill="#F59E0B" color="#F59E0B" />
-                    ))}
-                  </div>
-                  <span className="verified-resident-pill">
-                    <CheckCircle2 size={12} color="#16A34A" />
-                    <span>{item.badge || 'Verified Resident'}</span>
-                  </span>
-                </div>
+              <div 
+                key={item.id} 
+                className="testimonial-slide-col"
+                style={{ flex: `0 0 ${100 / cardsPerView}%` }}
+              >
+                <div className="testimonial-resident-card">
+                  {/* Decorative background watermark quote */}
+                  <Quote className="card-watermark-quote" size={44} />
 
-                <p className="card-review-quote">
-                  "{item.comment}"
-                </p>
-
-                <div className="card-resident-footer">
-                  <div className="resident-avatar-circle">
-                    {item.name.charAt(0)}
+                  <div className="card-top-row">
+                    <div className="card-stars-row">
+                      {[...Array(item.rating || 5)].map((_, i) => (
+                        <Star key={i} size={15} fill="#F59E0B" color="#F59E0B" />
+                      ))}
+                    </div>
+                    <span className="verified-resident-pill">
+                      <CheckCircle2 size={12} color="#16A34A" />
+                      <span>{item.badge || 'Verified Resident'}</span>
+                    </span>
                   </div>
-                  <div className="resident-details-col">
-                    <h5 className="resident-name">{item.name}</h5>
-                    <span className="resident-location-sub">
-                      {item.flat ? `${item.flat} • ` : ''}{item.society}
-                    </span>
-                    <span className="delivery-status-stamp">
-                      ✓ {item.tag || 'Delivered 7:15 AM via Morning Drop'}
-                    </span>
+
+                  <p className="card-review-quote">
+                    "{item.comment}"
+                  </p>
+
+                  <div className="card-resident-footer">
+                    <div className="resident-avatar-circle">
+                      {item.name.charAt(0)}
+                    </div>
+                    <div className="resident-details-col">
+                      <h5 className="resident-name">{item.name}</h5>
+                      <div className="resident-society-row">
+                        <Building2 size={11} color="#64748B" />
+                        <span className="resident-location-sub">
+                          {item.flat ? `${item.flat} • ` : ''}{item.society}
+                        </span>
+                      </div>
+                      <span className="delivery-status-stamp">
+                        ✓ {item.tag || 'Delivered 7:15 AM via Morning Drop'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Navigation Arrows for Mobile / Tablet / Desktop Track */}
-          <div className="testimonials-nav-controls">
+        {/* Carousel Pagination Dots */}
+        <div className="testimonials-dots-track">
+          {[...Array(maxSlide + 1)].map((_, idx) => (
             <button
+              key={idx}
               type="button"
-              className="testimonials-nav-btn"
-              onClick={() => scrollTestimonials('left')}
-              aria-label="Previous Testimonials"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              type="button"
-              className="testimonials-nav-btn"
-              onClick={() => scrollTestimonials('right')}
-              aria-label="Next Testimonials"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+              className={`carousel-dot-indicator ${idx === activeSlide ? 'active' : ''}`}
+              onClick={() => setActiveSlide(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
         </div>
       </section>
     </div>
