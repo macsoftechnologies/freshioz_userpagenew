@@ -100,34 +100,7 @@ export default function HomePage() {
   } = useStore();
 
   const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [cardsPerView, setCardsPerView] = useState(3);
-
-  // Responsive cards per view (1 on mobile, 2 on tablet, 3 on desktop)
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 640) {
-        setCardsPerView(1);
-      } else if (window.innerWidth < 1024) {
-        setCardsPerView(2);
-      } else {
-        setCardsPerView(3);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const maxSlide = Math.max(0, testimonials.length - cardsPerView);
-
-  const handlePrev = () => {
-    setActiveSlide((prev) => Math.max(0, prev - 1));
-  };
-
-  const handleNext = () => {
-    setActiveSlide((prev) => Math.min(maxSlide, prev + 1));
-  };
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
 
   // Attempt to load live moderated website reviews from backend if available
   useEffect(() => {
@@ -286,69 +259,41 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Verified Resident Reviews & Live Testimonials Desktop & Mobile Carousel */}
+      {/* Verified Resident Reviews & Live Community Feedback (Continuous Seamless Flow) */}
       <section className="section-container home-testimonials-wrap">
-        <div className="testimonials-header-row">
-          <div className="testimonials-title-group">
-            <div className="testimonials-badge-pill">
-              <Sparkles size={12} color="#15803D" />
-              <span>VERIFIED COMMUNITY FEEDBACK</span>
-            </div>
-            <h2 className="testimonials-main-title">
-              What Your Neighbors Are Saying
-            </h2>
-            <div className="testimonials-stars-summary">
-              <div className="stars-cluster">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={15} fill="#F59E0B" color="#F59E0B" />
-                ))}
-              </div>
-              <span className="rating-score-text">5.0 / 5.0</span>
-              <span className="rating-divider">•</span>
-              <span className="rating-desc-text">Pure Farm Freshness & Next-Morning Doorstep Drops</span>
-            </div>
+        <div className="testimonials-header-centered">
+          <div className="testimonials-badge-pill">
+            <Sparkles size={12} color="#15803D" />
+            <span>VERIFIED COMMUNITY FEEDBACK</span>
           </div>
-
-          {/* Desktop & Tablet Carousel Arrows */}
-          <div className="testimonials-carousel-controls">
-            <button
-              type="button"
-              className="carousel-arrow-btn"
-              onClick={handlePrev}
-              disabled={activeSlide === 0}
-              aria-label="Previous Testimonials"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <span className="carousel-page-counter">
-              <strong>{String(activeSlide + 1).padStart(2, '0')}</strong> / {String(maxSlide + 1).padStart(2, '0')}
-            </span>
-            <button
-              type="button"
-              className="carousel-arrow-btn"
-              onClick={handleNext}
-              disabled={activeSlide >= maxSlide}
-              aria-label="Next Testimonials"
-            >
-              <ChevronRight size={20} />
-            </button>
+          <h2 className="testimonials-main-title">
+            What Your Neighbors Are Saying
+          </h2>
+          <div className="testimonials-stars-summary">
+            <div className="stars-cluster">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={15} fill="#F59E0B" color="#F59E0B" />
+              ))}
+            </div>
+            <span className="rating-score-text">5.0 / 5.0</span>
+            <span className="rating-divider">•</span>
+            <span className="rating-desc-text">Pure Farm Freshness & Next-Morning Doorstep Drops</span>
           </div>
         </div>
 
-        {/* Carousel Window & Sliding Track */}
-        <div className="testimonials-carousel-viewport">
-          <div 
-            className="testimonials-sliding-track"
-            style={{
-              transform: `translateX(-${activeSlide * (100 / cardsPerView)}%)`,
-              transition: 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)'
-            }}
-          >
-            {testimonials.map((item) => (
+        {/* Continuous Flow Marquee Viewport (Pauses on Hover for Easy Reading) */}
+        <div 
+          className="testimonials-continuous-viewport"
+          onMouseEnter={() => setIsCarouselHovered(true)}
+          onMouseLeave={() => setIsCarouselHovered(false)}
+          onTouchStart={() => setIsCarouselHovered(true)}
+          onTouchEnd={() => setTimeout(() => setIsCarouselHovered(false), 2000)}
+        >
+          <div className={`testimonials-continuous-track ${isCarouselHovered ? 'paused' : ''}`}>
+            {[...testimonials, ...testimonials].map((item, idx) => (
               <div 
-                key={item.id} 
-                className="testimonial-slide-col"
-                style={{ flex: `0 0 ${100 / cardsPerView}%` }}
+                key={`${item.id}-${idx}`} 
+                className="testimonial-flow-col"
               >
                 <div className="testimonial-resident-card">
                   {/* Decorative background watermark quote */}
@@ -391,19 +336,6 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Carousel Pagination Dots */}
-        <div className="testimonials-dots-track">
-          {[...Array(maxSlide + 1)].map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className={`carousel-dot-indicator ${idx === activeSlide ? 'active' : ''}`}
-              onClick={() => setActiveSlide(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-            />
-          ))}
         </div>
       </section>
     </div>
