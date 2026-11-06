@@ -5,7 +5,14 @@ import {
   Clock, 
   ArrowLeft,
   AlertCircle,
-  X
+  X,
+  RefreshCw,
+  MapPin,
+  Truck,
+  ShoppingBag,
+  CreditCard,
+  Building2,
+  PackageCheck
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
@@ -17,6 +24,8 @@ export default function OrderTrackingPage() {
 
   const [liveServerOrder, setLiveServerOrder] = useState(null);
   const [_isLoadingLive, setIsLoadingLive] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('Placed order by mistake');
   const [isCancelling, setIsCancelling] = useState(false);
@@ -33,35 +42,51 @@ export default function OrderTrackingPage() {
     ? (userOrders.find(o => o.id === orderId || o.uuid === orderId) || null)
     : (userOrders[0] || null);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchLiveTracking() {
-      const targetId = orderId || currentLocalOrder?.id || currentLocalOrder?.uuid;
-      if (!targetId) return;
-      setIsLoadingLive(true);
-      try {
-        let trackData = null;
-        if (activeUser) {
-          try {
-            trackData = await orderService.getById(targetId);
-          } catch {
-            trackData = await orderService.track(targetId);
-          }
-        } else {
+  // Fetch live order tracking with background polling capability
+  const fetchLiveTracking = async (showFullSpinner = false) => {
+    const targetId = orderId || currentLocalOrder?.id || currentLocalOrder?.uuid;
+    if (!targetId) return;
+    if (showFullSpinner) setIsLoadingLive(true);
+    setIsRefreshing(true);
+    try {
+      let trackData = null;
+      if (activeUser) {
+        try {
+          trackData = await orderService.getById(targetId);
+        } catch {
           trackData = await orderService.track(targetId);
         }
-
-        if (isMounted && trackData && trackData.id) {
-          setLiveServerOrder(trackData);
-        }
-      } catch (err) {
-        console.warn('Order tracking live fetch note:', err?.message || err);
-      } finally {
-        if (isMounted) setIsLoadingLive(false);
+      } else {
+        trackData = await orderService.track(targetId);
       }
+
+      if (trackData && trackData.id) {
+        setLiveServerOrder(trackData);
+        setLastRefreshedAt(new Date());
+      }
+    } catch (err) {
+      console.warn('Order tracking live fetch note:', err?.message || err);
+    } finally {
+      if (showFullSpinner) setIsLoadingLive(false);
+      setIsRefreshing(false);
     }
-    fetchLiveTracking();
-    return () => { isMounted = false; };
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchLiveTracking(true);
+
+    // Continuous 10-second automatic polling across mobile, tablet, and desktop
+    const timer = setInterval(() => {
+      if (isMounted) {
+        fetchLiveTracking(false);
+      }
+    }, 10000);
+
+    return () => { 
+      isMounted = false; 
+      clearInterval(timer);
+    };
   }, [activeUser?.phone, activeUser?.id, orderId, currentLocalOrder?.id, currentLocalOrder?.uuid]);
 
   if (!activeUser && !orderId) {
@@ -81,7 +106,7 @@ export default function OrderTrackingPage() {
     );
   }
 
-  // Combine local cached order details (e.g. line items) with live backend tracking milestones
+  // Combine local cached order details with live backend tracking
   const currentOrder = liveServerOrder 
     ? { ...(currentLocalOrder || {}), ...liveServerOrder } 
     : currentLocalOrder;
@@ -106,7 +131,7 @@ export default function OrderTrackingPage() {
   const getStepIndex = (status) => {
     switch (status) {
       case 'CONFIRMED':
-      case 'PROCURING': // Backward-compatible with legacy orders
+      case 'PROCURING':
         return 0;
       case 'AT_WAREHOUSE':
       case 'PACKED':
@@ -158,9 +183,11 @@ export default function OrderTrackingPage() {
   };
 
   const isCancelled = currentOrder?.status === 'CANCELLED';
+  const isDelivered = currentOrder?.status === 'DELIVERED';
+  const isCod = (currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder?.paymentStatus === 'PENDING_COD';
 
   return (
-    <div className="section-container" style={{ paddingTop: '20px', maxWidth: '840px' }}>
+    <div className="section-container" style={{ paddingTop: '16px', paddingBottom: '50px', maxWidth: '840px' }}>
       {cancelSuccessMsg && (
         <div style={{
           background: '#ECFDF5',
@@ -195,160 +222,302 @@ export default function OrderTrackingPage() {
           <AlertCircle size={20} color="#E53E3E" />
           <div>
             <strong>Order Cancelled:</strong> {currentOrder?.cancelledReason || 'Cancelled before delivery'}
-            {(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder?.paymentStatus === 'PENDING_COD'
-              ? ' • No payment collected (Pay on Delivery)'
-              : ''}
+            {isCod ? ' • No payment collected (Pay on Delivery)' : ''}
           </div>
         </div>
       )}
 
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link to="/orders" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#234B3C', fontSize: '13px', fontWeight: 700 }}>
-            <ArrowLeft size={16} /> Back to My Orders
-          </Link>
-          <span style={{ color: '#CBD5E1' }}>•</span>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#64748B', fontSize: '13px', fontWeight: 600 }}>
-            Store
-          </Link>
+      {/* Top Navigation & Live Polling Status Header */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link to="/orders" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#234B3C', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
+              <ArrowLeft size={15} /> My Orders
+            </Link>
+            <span style={{ color: '#CBD5E1' }}>•</span>
+            <span style={{ fontSize: '13px', color: '#64748B' }}>Order #{currentOrder?.id}</span>
+          </div>
+
+          {/* 10s Live Sync Indicator & Tap Refresh */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              background: '#ECFDF5',
+              color: '#065F46',
+              border: '1px solid #A7F3D0',
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '3px 10px',
+              borderRadius: '9999px'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
+              <span>Live 10s Auto-Sync</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => fetchLiveTracking(false)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                color: '#475569',
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '9999px',
+                cursor: 'pointer'
+              }}
+              title="Click to refresh live order state immediately"
+            >
+              <RefreshCw size={11} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginTop: '6px' }}>
-          <div>
-            <h1 style={{ fontSize: '26px', color: '#234B3C' }}>Live Order Tracking</h1>
-            <div style={{ fontSize: '13.5px', color: '#52635A', marginTop: '2px' }}>
-              Order ID: <strong style={{ fontFamily: 'monospace', color: '#15221B' }}>{currentOrder?.id}</strong>
+      </div>
+
+      {/* ========================================================
+          USER-FRIENDLY DELIVERED EXPERIENCE (Mobile, Tab & Desktop)
+          Clear-cut instructions with zero clutter
+         ======================================================== */}
+      {isDelivered ? (
+        <div style={{
+          background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+          borderRadius: '20px',
+          border: '2px solid #86EFAC',
+          padding: '24px 20px',
+          boxShadow: '0 8px 30px rgba(16, 185, 129, 0.12)',
+          marginBottom: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: '#059669',
+            color: '#FFFFFF',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '12px',
+            boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)'
+          }}>
+            <CheckCircle2 size={36} />
+          </div>
+
+          <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#064E3B', margin: '0 0 6px', fontFamily: 'Outfit, sans-serif' }}>
+            Fresh Produce Delivered!
+          </h2>
+          <p style={{ fontSize: '13px', color: '#047857', fontWeight: 600, margin: '0 0 16px' }}>
+            Your farm-fresh harvest is safely delivered and ready for pickup at your society desk.
+          </p>
+
+          {/* Clear-Cut Instructions Grid */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'left',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '12px',
+            marginBottom: '16px',
+            border: '1px solid #A7F3D0'
+          }}>
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                📍 Drop Location
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                {currentOrder?.societyName || 'Society Point'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700 }}>
+                Flat / Door: {currentOrder?.flatNo || 'Drop Desk'}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                ⏰ Delivery Schedule
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                {currentOrder?.deliveryDate || 'Today'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                {currentOrder?.deliverySlot || 'Morning Run'}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                🚚 Delivery Rider
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                {currentOrder?.deliveryPartnerName || 'Freshioz Delivery Lead'}
+              </div>
+              {currentOrder?.deliveryPartnerPhone && (
+                <div style={{ fontSize: '12px', color: '#0284C7', fontWeight: 700 }}>
+                  📞 +91 {currentOrder.deliveryPartnerPhone.slice(-10)}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                💳 Payment Status
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
+                ₹{currentOrder?.totalAmount} Paid
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#166534', fontWeight: 700 }}>
+                {isCod ? '✓ Cash Collected at Door' : '✓ Verified Online Payment'}
+              </div>
             </div>
           </div>
 
-          <span style={{
-            background: isCancelled ? '#FEE2E2' : currentOrder?.status === 'DELIVERED' ? '#EBF7E5' : '#FEF3C7',
-            color: isCancelled ? '#DC2626' : currentOrder?.status === 'DELIVERED' ? '#234B3C' : '#92400E',
-            fontWeight: 800,
-            fontSize: '12px',
-            padding: '4px 14px',
-            borderRadius: '9999px',
-            textTransform: 'uppercase'
+          {/* Quick Clear-Cut Action Buttons */}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#059669',
+                color: '#FFFFFF',
+                padding: '10px 22px',
+                borderRadius: '9999px',
+                fontSize: '13.5px',
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
+              }}
+            >
+              <ShoppingBag size={15} />
+              <span>Order Tomorrow's Fresh Produce ➔</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        /* IN PROGRESS: CLEAN STATUS OVERVIEW */
+        <>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            boxShadow: '0 4px 16px rgba(35, 75, 60, 0.05)',
+            marginBottom: '16px',
+            border: '1px solid #E5ECE7'
           }}>
-            {currentOrder?.status?.replace(/_/g, ' ')}
-          </span>
-        </div>
-      </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: '#234B3C', 
+                  background: '#EBF7E5',
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  fontWeight: 800, 
+                  textTransform: 'uppercase',
+                  display: 'inline-block',
+                  marginBottom: '4px'
+                }}>
+                  Next-Day Scheduled Delivery
+                </span>
+                <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'Outfit', color: '#15221B' }}>
+                  {currentOrder?.deliveryDate} • {currentOrder?.deliverySlot}
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#52635A', marginTop: '2px' }}>
+                  🏢 {currentOrder?.societyName} ({currentOrder?.flatNo})
+                </div>
+              </div>
 
-      {/* Society Delivery Badge Card (Clean Borderless White Luxury Card) */}
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: '18px',
-        padding: '20px 24px',
-        border: 'none',
-        boxShadow: '0 8px 24px rgba(35, 75, 60, 0.06)',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div>
-          <div style={{ 
-            fontSize: '11px', 
-            color: '#234B3C', 
-            background: '#EBF7E5',
-            padding: '3px 10px',
-            borderRadius: '9999px',
-            fontWeight: 800, 
-            textTransform: 'uppercase',
-            display: 'inline-block',
-            marginBottom: '6px'
-          }}>
-            Next-Day Scheduled Delivery
+              <span style={{
+                background: isCancelled ? '#FEE2E2' : '#FEF3C7',
+                color: isCancelled ? '#DC2626' : '#92400E',
+                fontWeight: 800,
+                fontSize: '12px',
+                padding: '4px 12px',
+                borderRadius: '9999px',
+                textTransform: 'uppercase'
+              }}>
+                {currentOrder?.status?.replace(/_/g, ' ')}
+              </span>
+            </div>
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'Outfit', color: '#15221B' }}>
-            {currentOrder?.deliveryDate} • {currentOrder?.deliverySlot}
-          </div>
-          <div style={{ fontSize: '13px', color: '#52635A', marginTop: '4px' }}>
-            🏢 {currentOrder?.societyName} ({currentOrder?.flatNo})
-          </div>
-        </div>
 
-        {/* CLIENT SPECIFICATION: Hidden from customer website - commented out, not deleted
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          padding: '10px 16px',
-          borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          textAlign: 'right'
-        }}>
-          <div style={{ fontSize: '11px', color: '#FFD494', fontWeight: 700 }}>SOCIETY CASHBACK</div>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>
-            +₹{currentOrder?.societyCommissionEarned || '5.00'}
-          </div>
-        </div>
-        */}
-      </div>
-
-      {/* Interactive Animated Express Van Transit Visualizer */}
-      <LiveVanTransitVisualizer 
-        currentOrder={currentOrder} 
-        currentStepIdx={currentStepIdx} 
-      />
-
-
+          {/* Interactive Van Transit Visualizer */}
+          <LiveVanTransitVisualizer 
+            currentOrder={currentOrder} 
+            currentStepIdx={currentStepIdx} 
+          />
+        </>
+      )}
 
       {/* Items Summary in this Order */}
       <div style={{
         background: '#FFFFFF',
-        borderRadius: '18px',
-        border: 'none',
-        boxShadow: '0 8px 24px rgba(35, 75, 60, 0.05)',
-        padding: '24px',
-        marginBottom: '40px'
+        borderRadius: '16px',
+        border: '1px solid #E5ECE7',
+        boxShadow: '0 4px 16px rgba(35, 75, 60, 0.04)',
+        padding: '20px',
+        marginBottom: '30px'
       }}>
-        <h3 style={{ fontSize: '17px', color: '#15221B', marginBottom: '14px' }}>Items in this Order</h3>
+        <h3 style={{ fontSize: '16px', color: '#15221B', margin: '0 0 12px', fontWeight: 800 }}>Items in this Order</h3>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {currentOrder?.items?.map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0F4F2' }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '14px', color: '#15221B' }}>{item.name}</div>
-                <div style={{ fontSize: '12px', color: '#52635A' }}>{item.qty} × {item.unit}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {currentOrder?.items?.map((item, idx) => {
+            const cleanUnit = String(item.unit || '').replace(/\b(?:pc|pcs|pieces?)\b/gi, '').trim();
+            const unitLabel = cleanUnit ? `${item.qty} ${cleanUnit}` : `×${item.qty}`;
+            return (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx < currentOrder.items.length - 1 ? '1px dashed #F0F4F2' : 'none' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#15221B' }}>{item.name}</div>
+                  <div style={{ fontSize: '12px', color: '#52635A' }}>{unitLabel}</div>
+                </div>
+                <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '13.5px' }}>
+                  ₹{item.totalPrice !== undefined && item.totalPrice !== null ? item.totalPrice : (item.price * item.qty)}
+                </div>
               </div>
-              <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '14px' }}>
-                ₹{item.totalPrice !== undefined && item.totalPrice !== null ? item.totalPrice : (item.price * item.qty)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {(!currentOrder?.items || currentOrder.items.length === 0) && (
-            <div style={{ fontSize: '13px', color: '#64748B', padding: '12px 0' }}>
+            <div style={{ fontSize: '13px', color: '#64748B', padding: '8px 0' }}>
               {currentOrder?.itemsCount ? `${currentOrder.itemsCount} produce item(s) included` : 'No item details available'}
             </div>
           )}
         </div>
 
         {/* Pricing Breakdown */}
-        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '5px' }}>
           {currentOrder?.subtotal !== undefined && currentOrder?.subtotal > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748B' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
               <span>Items Subtotal</span>
               <span>₹{currentOrder.subtotal}</span>
             </div>
           )}
           {currentOrder?.bulkSavings !== undefined && currentOrder?.bulkSavings > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#059669', fontWeight: 600 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669', fontWeight: 600 }}>
               <span>Volume Bulk Savings</span>
               <span>-₹{currentOrder.bulkSavings}</span>
             </div>
           )}
           {currentOrder?.deliveryFee !== undefined && currentOrder?.deliveryFee > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748B' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
               <span>Delivery Fee</span>
               <span>₹{currentOrder.deliveryFee}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', fontSize: '15px', fontWeight: 800, color: '#234B3C', borderTop: '1px dashed #E2E8F0', marginTop: '4px' }}>
             <div>
-              <span>{(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') ? (
+              <span>{isCod ? (
                 (currentOrder?.paymentStatus === 'PAID' || currentOrder?.codPaymentReceived) ? (
-                  <span style={{ color: '#166534' }}>Total Paid (Cash on Delivery - Collected ✅)</span>
+                  <span style={{ color: '#166534' }}>Total Paid (Cash Collected ✅)</span>
                 ) : (
                   <span style={{ color: '#B91C1C' }}>Amount Due on Delivery (Cash / UPI)</span>
                 )
@@ -361,7 +530,7 @@ export default function OrderTrackingPage() {
         </div>
 
         {!['DELIVERED', 'CANCELLED'].includes(currentOrder?.status) && (
-          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F0F4F2', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F0F4F2', display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
               onClick={() => {
@@ -373,9 +542,9 @@ export default function OrderTrackingPage() {
                 background: '#FFF5F5',
                 color: '#DC2626',
                 border: '1.5px solid #FECACA',
-                padding: '9px 20px',
+                padding: '8px 18px',
                 borderRadius: '9999px',
-                fontSize: '13px',
+                fontSize: '12.5px',
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'inline-flex',
@@ -426,32 +595,32 @@ export default function OrderTrackingPage() {
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                 <AlertCircle size={24} />
               </div>
-              <h3 style={{ fontSize: '19px', color: '#15221B', margin: 0 }}>
+              <h3 style={{ fontSize: '18px', color: '#15221B', margin: 0, fontWeight: 800 }}>
                 Cancel Order #{currentOrder?.id}?
               </h3>
-              <p style={{ color: '#52635A', fontSize: '13px', margin: '6px 0 0' }}>
-                {(currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder?.paymentStatus === 'PENDING_COD'
+              <p style={{ color: '#52635A', fontSize: '12.5px', margin: '6px 0 0' }}>
+                {isCod
                   ? 'Since this order is scheduled for Pay on Delivery, no payment was collected and your order will be cancelled immediately.'
                   : 'Your order will be cancelled immediately and no further charges will apply.'}
               </p>
             </div>
 
             {cancelErrorMsg && (
-              <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', color: '#B91C1C', fontSize: '12.5px', marginBottom: '14px' }}>
+              <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', color: '#B91C1C', fontSize: '12px', marginBottom: '14px' }}>
                 {cancelErrorMsg}
               </div>
             )}
 
             <form onSubmit={handleConfirmCancel}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#234B3C', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#234B3C', marginBottom: '6px' }}>
                   Reason for Cancellation:
                 </label>
                 <select
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   className="form-input-control"
-                  style={{ width: '100%', height: '40px', borderRadius: '8px', border: '1.5px solid #CBD5E1', padding: '0 12px', fontSize: '13px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', height: '38px', borderRadius: '8px', border: '1.5px solid #CBD5E1', padding: '0 10px', fontSize: '12.5px', boxSizing: 'border-box' }}
                 >
                   <option value="Placed order by mistake">Placed order by mistake</option>
                   <option value="Need to change delivery flat / address">Need to change delivery flat / address</option>
@@ -461,7 +630,7 @@ export default function OrderTrackingPage() {
                 </select>
               </div>
 
-              <div style={{ background: '#F7FAF8', padding: '12px', borderRadius: '10px', fontSize: '12px', color: '#52635A', marginBottom: '18px', border: '1px solid #E5ECE7' }}>
+              <div style={{ background: '#F7FAF8', padding: '10px 12px', borderRadius: '8px', fontSize: '11.5px', color: '#52635A', marginBottom: '16px', border: '1px solid #E5ECE7' }}>
                 <div>• Items: <strong>{currentOrder?.items?.map(i => i.name).join(', ')}</strong></div>
                 <div style={{ marginTop: '3px' }}>• Scheduled Drop: <strong>{currentOrder?.deliveryDate} ({currentOrder?.deliverySlot})</strong></div>
               </div>
@@ -470,7 +639,7 @@ export default function OrderTrackingPage() {
                 <button
                   type="button"
                   onClick={() => setIsCancelModalOpen(false)}
-                  style={{ flex: 1, padding: '11px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', color: '#475569' }}
+                  style={{ flex: 1, padding: '10px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '12.5px', cursor: 'pointer', color: '#475569' }}
                 >
                   Keep Order
                 </button>
@@ -479,18 +648,18 @@ export default function OrderTrackingPage() {
                   disabled={isCancelling}
                   style={{ 
                     flex: 2, 
-                    padding: '11px', 
+                    padding: '10px', 
                     background: isCancelling ? '#94A3B8' : '#DC2626', 
                     color: '#FFF', 
                     border: 'none', 
                     borderRadius: '9999px', 
                     fontWeight: 800, 
-                    fontSize: '13px', 
+                    fontSize: '12.5px', 
                     cursor: isCancelling ? 'not-allowed' : 'pointer', 
                     boxShadow: isCancelling ? 'none' : '0 4px 12px rgba(220, 38, 38, 0.25)' 
                   }}
                 >
-                  {isCancelling ? 'Cancelling on Server...' : 'Confirm Order Cancellation'}
+                  {isCancelling ? 'Cancelling on Server...' : 'Confirm Cancellation'}
                 </button>
               </div>
             </form>

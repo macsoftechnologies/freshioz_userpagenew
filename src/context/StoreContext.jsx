@@ -140,17 +140,28 @@ export function StoreProvider({ children }) {
     const currentHours = now.getHours();
     const currentMinutes = now.getMinutes();
     
-    // Parse serving warehouse cutoff time e.g. "21:00"
+    // Parse serving warehouse cutoff time e.g. "21:00" or "02:00"
     const [cutoffH, cutoffM] = (servingWarehouse.cutoffTime || '21:00').split(':').map(Number);
     
-    const isPastCutoff = (currentHours > cutoffH) || (currentHours === cutoffH && currentMinutes >= cutoffM);
-
-    // Calculate dates
+    let isPastCutoff = false;
     const deliveryDateObj = new Date();
-    if (isPastCutoff) {
-      deliveryDateObj.setDate(deliveryDateObj.getDate() + 2); // Day after tomorrow
+
+    if (cutoffH <= 6) {
+      // Dawn cutoff (e.g. 02:00 AM)
+      if (currentHours < cutoffH || (currentHours === cutoffH && currentMinutes < cutoffM)) {
+        // Late night before dawn cutoff -> delivery is TODAY morning!
+      } else {
+        // After dawn cutoff -> delivery is TOMORROW morning!
+        deliveryDateObj.setDate(deliveryDateObj.getDate() + 1);
+      }
     } else {
-      deliveryDateObj.setDate(deliveryDateObj.getDate() + 1); // Tomorrow
+      // Standard evening cutoff (e.g. 21:00 or 23:30)
+      isPastCutoff = (currentHours > cutoffH) || (currentHours === cutoffH && currentMinutes >= cutoffM);
+      if (isPastCutoff) {
+        deliveryDateObj.setDate(deliveryDateObj.getDate() + 2); // Day after tomorrow
+      } else {
+        deliveryDateObj.setDate(deliveryDateObj.getDate() + 1); // Tomorrow
+      }
     }
 
     const options = { weekday: 'short', month: 'short', day: 'numeric' };
@@ -159,6 +170,9 @@ export function StoreProvider({ children }) {
     // Remaining time until cutoff today
     let hoursRemaining = cutoffH - currentHours;
     let minutesRemaining = cutoffM - currentMinutes;
+    if (cutoffH <= 6 && currentHours > cutoffH) {
+      hoursRemaining += 24;
+    }
     if (minutesRemaining < 0) {
       hoursRemaining -= 1;
       minutesRemaining += 60;
@@ -170,9 +184,9 @@ export function StoreProvider({ children }) {
 
     return {
       isPastCutoff,
-      cutoffTimeStr: `${cutoffH > 12 ? cutoffH - 12 : cutoffH}:${cutoffM.toString().padStart(2, '0')} ${cutoffH >= 12 ? 'PM' : 'AM'}`,
+      cutoffTimeStr: `${cutoffH > 12 ? cutoffH - 12 : (cutoffH === 0 ? 12 : cutoffH)}:${cutoffM.toString().padStart(2, '0')} ${cutoffH >= 12 ? 'PM' : 'AM'}`,
       formattedDeliveryDate,
-      deliveryDayLabel: isPastCutoff ? 'Day After Tomorrow' : 'Tomorrow Morning',
+      deliveryDayLabel: isPastCutoff ? 'Day After Tomorrow' : (cutoffH <= 6 && currentHours < cutoffH ? 'Today Morning' : 'Tomorrow Morning'),
       hoursRemaining,
       minutesRemaining,
       servingWarehouseName: servingWarehouse.name,
