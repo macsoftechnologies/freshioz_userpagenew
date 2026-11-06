@@ -152,15 +152,6 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-
-          {/* Right-Side Fresh Produce Crate Visual */}
-          <div className="hero-right-visual">
-            <img 
-              src={heroBannerImg} 
-              alt="Fresh Produce Harvest Crate" 
-              className="hero-produce-right-img"
-            />
-          </div>
         </div>
       </section>
 
