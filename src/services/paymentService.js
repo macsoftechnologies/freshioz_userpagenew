@@ -58,5 +58,24 @@ export const paymentService = {
       document.body.appendChild(script);
     });
   },
+
+  /**
+   * Fetch FreshCoins public configuration
+   */
+  async getFreshCoinsPublicConfig() {
+    try {
+      return await apiClient('/payments/fresh-coins/public-config');
+    } catch (e) {
+      console.warn('Failed to load FreshCoins public config:', e);
+      return { isEnabled: true, earningRatePercent: 5.0, coinRupeeValue: 1.0, maxRedemptionPercent: 25.0, minOrderValue: 100.0 };
+    }
+  },
+
+  /**
+   * Fetch logged-in customer's FreshCoins wallet and history
+   */
+  async getMyFreshCoinsWallet() {
+    return apiClient('/payments/fresh-coins/my-wallet');
+  },
 };
 

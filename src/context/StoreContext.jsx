@@ -378,7 +378,7 @@ export function StoreProvider({ children }) {
   };
 
   // Place Order Flow
-  const placeOrder = async ({ deliverySlot, paymentMethod, discountCode, discountAmount }) => {
+  const placeOrder = async ({ deliverySlot, paymentMethod, discountCode, discountAmount, freshCoinsUsed, freshCoinsDiscount }) => {
     if (!activeUser || cart.length === 0) return null;
 
     const society = selectedSociety;
@@ -391,7 +391,8 @@ export function StoreProvider({ children }) {
     }
 
     const appliedDiscountVal = Number(discountAmount) || 0;
-    const computedTotal = Math.max(0, cartSubtotal + deliveryFee + cartGst - appliedDiscountVal);
+    const appliedCoinsDiscountVal = Number(freshCoinsDiscount) || 0;
+    const computedTotal = Math.max(0, cartSubtotal + deliveryFee + cartGst - appliedDiscountVal - appliedCoinsDiscountVal);
 
     const payload = {
       userPhone: activeUser.phone,
@@ -409,6 +410,8 @@ export function StoreProvider({ children }) {
       totalAmount: computedTotal,
       discountCode: discountCode || undefined,
       discountAmount: appliedDiscountVal > 0 ? appliedDiscountVal : undefined,
+      freshCoinsUsed: Number(freshCoinsUsed) > 0 ? Number(freshCoinsUsed) : undefined,
+      freshCoinsDiscount: appliedCoinsDiscountVal > 0 ? appliedCoinsDiscountVal : undefined,
       deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
       deliverySlot: deliverySlot || defaultSlotLabel,
       paymentMethod: paymentMethod === 'UPI' || paymentMethod === 'ONLINE_RAZORPAY' ? 'UPI' : 'PAY_ON_DELIVERY',

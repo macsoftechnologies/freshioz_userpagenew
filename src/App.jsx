@@ -104,6 +104,7 @@ export default function App() {
           <Route path="/orders" element={<UserProfilePage forcedTab="orders" />} />
           <Route path="/history" element={<UserProfilePage forcedTab="history" />} />
           <Route path="/rewards" element={<UserProfilePage forcedTab="rewards" />} />
+          <Route path="/reviews" element={<UserProfilePage forcedTab="reviews" />} />
           <Route path="/profile" element={<UserProfilePage forcedTab="profile" />} />
         </Routes>
       </main>

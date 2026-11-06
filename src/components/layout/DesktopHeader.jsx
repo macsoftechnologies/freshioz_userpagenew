@@ -9,6 +9,7 @@ import {
   Package,
   Clock,
   Gift,
+  Star,
   LogOut,
   Building2
 } from 'lucide-react';
@@ -225,10 +226,22 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
                       className="user-menu-item"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
-                      <Gift size={17} className="menu-icon" />
+                      <Coins size={17} className="menu-icon" color="#D97706" />
                       <div className="menu-item-text">
-                        <span>Rewards & Discounts</span>
-                        <small>Coupons & referral wallet</small>
+                        <span>FreshCoins & Rewards</span>
+                        <small>Cashback passbook & vouchers</small>
+                      </div>
+                    </Link>
+
+                    <Link
+                      to="/reviews"
+                      className="user-menu-item"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <Star size={17} className="menu-icon" color="#F59E0B" />
+                      <div className="menu-item-text">
+                        <span>My Reviews</span>
+                        <small>Produce & delivery feedback</small>
                       </div>
                     </Link>
 

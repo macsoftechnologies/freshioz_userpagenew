@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Clock,
   Gift,
+  Star,
   Download
 } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
@@ -114,7 +115,14 @@ export default function MobileDrawer() {
                     onClick={() => setIsMobileDrawerOpen(false)}
                     style={{ fontSize: '12.5px', fontWeight: 700, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
-                    <Gift size={14} /> Rewards & Discounts
+                    <Coins size={14} color="#D97706" /> FreshCoins & Rewards
+                  </Link>
+                  <Link
+                    to="/reviews"
+                    onClick={() => setIsMobileDrawerOpen(false)}
+                    style={{ fontSize: '12.5px', fontWeight: 700, color: '#234B3C', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Star size={14} color="#F59E0B" /> My Reviews & Ratings
                   </Link>
                   <Link
                     to="/profile"

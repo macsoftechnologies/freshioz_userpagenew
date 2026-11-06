@@ -21,12 +21,16 @@ import {
   Lock,
   Building2,
   Printer,
-  FileText
+  FileText,
+  Coins,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
 import { discountService } from '../services/discountService';
 import { reviewService } from '../services/reviewService';
+import { paymentService } from '../services/paymentService';
 
 export default function UserProfilePage({ forcedTab }) {
   const navigate = useNavigate();
@@ -39,6 +43,7 @@ export default function UserProfilePage({ forcedTab }) {
     location.pathname === '/orders' ? 'orders' :
     location.pathname === '/history' ? 'history' :
     location.pathname === '/rewards' ? 'rewards' :
+    location.pathname === '/reviews' ? 'reviews' :
     location.pathname === '/profile' && tabParam ? tabParam :
     (tabParam || 'orders')
   );
@@ -50,6 +55,7 @@ export default function UserProfilePage({ forcedTab }) {
       if (tab === 'orders') navigate('/orders', { replace: true });
       else if (tab === 'history') navigate('/history', { replace: true });
       else if (tab === 'rewards') navigate('/rewards', { replace: true });
+      else if (tab === 'reviews') navigate('/reviews', { replace: true });
     }
   }, [location.pathname, searchParams, navigate]);
 
@@ -60,7 +66,9 @@ export default function UserProfilePage({ forcedTab }) {
     } else if (activeTab === 'history') {
       document.title = 'Purchase History & Invoices | Freshioz';
     } else if (activeTab === 'rewards') {
-      document.title = 'Rewards & Discounts Wallet | Freshioz';
+      document.title = 'FreshCoins & Rewards Wallet | Freshioz';
+    } else if (activeTab === 'reviews') {
+      document.title = 'My Reviews & Community Feedback | Freshioz';
     } else if (activeTab === 'profile') {
       document.title = 'Resident Profile & Delivery Address | Freshioz';
     }
@@ -98,6 +106,7 @@ export default function UserProfilePage({ forcedTab }) {
   const [discounts, setDiscounts] = useState([]);
   const [_isLoadingDiscounts, setIsLoadingDiscounts] = useState(false);
   const [copiedCode, setCopiedCode] = useState('');
+  const [coinsWallet, setCoinsWallet] = useState(null);
 
   // Customer Reviews State
   const [myReviews, setMyReviews] = useState([]);
@@ -133,10 +142,11 @@ export default function UserProfilePage({ forcedTab }) {
       setIsLoadingOrders(true);
       setIsLoadingDiscounts(true);
       try {
-        const [ordersRes, discountsRes, reviewsRes] = await Promise.allSettled([
+        const [ordersRes, discountsRes, reviewsRes, coinsRes] = await Promise.allSettled([
           orderService.getAll({ phone: activeUser.phone }),
           discountService.getMyDiscounts(),
-          reviewService.getMyReviews()
+          reviewService.getMyReviews(),
+          paymentService.getMyFreshCoinsWallet()
         ]);
         if (isMounted) {
           if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
@@ -147,6 +157,9 @@ export default function UserProfilePage({ forcedTab }) {
           }
           if (reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value)) {
             setMyReviews(reviewsRes.value);
+          }
+          if (coinsRes.status === 'fulfilled' && coinsRes.value) {
+            setCoinsWallet(coinsRes.value);
           }
         }
       } catch (err) {
@@ -446,6 +459,169 @@ export default function UserProfilePage({ forcedTab }) {
 
   return (
     <div className="section-container" style={{ paddingTop: '12px', paddingBottom: '40px', maxWidth: '880px' }}>
+      {/* Top Profile Tab Navigation Bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        overflowX: 'auto',
+        paddingBottom: '8px',
+        marginBottom: '18px',
+        borderBottom: '1.5px solid #E5ECE7',
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        <button
+          type="button"
+          onClick={() => navigate('/orders')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 16px',
+            borderRadius: '9999px',
+            fontSize: '12.5px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            border: activeTab === 'orders' ? '1.5px solid #234B3C' : '1px solid #DCE5E0',
+            background: activeTab === 'orders' ? '#234B3C' : '#FFFFFF',
+            color: activeTab === 'orders' ? '#FFFFFF' : '#52635A',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Package size={14} />
+          <span>Active Orders</span>
+          {pendingOrders.length > 0 && (
+            <span style={{
+              background: activeTab === 'orders' ? '#86EFAC' : '#EBF7E5',
+              color: '#234B3C',
+              fontSize: '10.5px',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {pendingOrders.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/history')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 16px',
+            borderRadius: '9999px',
+            fontSize: '12.5px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            border: activeTab === 'history' ? '1.5px solid #234B3C' : '1px solid #DCE5E0',
+            background: activeTab === 'history' ? '#234B3C' : '#FFFFFF',
+            color: activeTab === 'history' ? '#FFFFFF' : '#52635A',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Clock size={14} />
+          <span>Purchase History</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/rewards')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 16px',
+            borderRadius: '9999px',
+            fontSize: '12.5px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            border: activeTab === 'rewards' ? '1.5px solid #234B3C' : '1px solid #DCE5E0',
+            background: activeTab === 'rewards' ? '#234B3C' : '#FFFFFF',
+            color: activeTab === 'rewards' ? '#FFFFFF' : '#52635A',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Coins size={14} color={activeTab === 'rewards' ? '#FEF08A' : '#D97706'} />
+          <span>FreshCoins & Rewards</span>
+          {(coinsWallet?.balance || 0) > 0 && (
+            <span style={{
+              background: activeTab === 'rewards' ? '#FEF08A' : '#FEF3C7',
+              color: '#92400E',
+              fontSize: '10.5px',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {coinsWallet.balance}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/reviews')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 16px',
+            borderRadius: '9999px',
+            fontSize: '12.5px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            border: activeTab === 'reviews' ? '1.5px solid #234B3C' : '1px solid #DCE5E0',
+            background: activeTab === 'reviews' ? '#234B3C' : '#FFFFFF',
+            color: activeTab === 'reviews' ? '#FFFFFF' : '#52635A',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Star size={14} color={activeTab === 'reviews' ? '#FEF08A' : '#F59E0B'} />
+          <span>My Reviews</span>
+          {myReviews.length > 0 && (
+            <span style={{
+              background: activeTab === 'reviews' ? '#86EFAC' : '#EBF2EE',
+              color: '#234B3C',
+              fontSize: '10.5px',
+              padding: '1px 6px',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {myReviews.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 16px',
+            borderRadius: '9999px',
+            fontSize: '12.5px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            border: activeTab === 'profile' ? '1.5px solid #234B3C' : '1px solid #DCE5E0',
+            background: activeTab === 'profile' ? '#234B3C' : '#FFFFFF',
+            color: activeTab === 'profile' ? '#FFFFFF' : '#52635A',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <User size={14} />
+          <span>Profile</span>
+        </button>
+      </div>
+
       {/* Orders Tab Title Bar (Directly Above-the-Fold) */}
       {activeTab === 'orders' && (
         <div style={{
@@ -1679,6 +1855,130 @@ export default function UserProfilePage({ forcedTab }) {
       {/* TAB 4: REWARDS & ACCOUNT DISCOUNTS */}
       {activeTab === 'rewards' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* FreshCoins Loyalty Wallet Hero Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, #78350F 0%, #B45309 50%, #D97706 100%)',
+            color: '#FFFFFF',
+            borderRadius: '20px',
+            padding: '24px 28px',
+            boxShadow: '0 8px 24px rgba(180, 83, 9, 0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '18px'
+          }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.18)', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: 800, marginBottom: '8px' }}>
+                <Coins size={14} color="#FEF08A" />
+                <span>Resident Cashback & Loyalty Wallet</span>
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
+                FreshCoins Balance
+              </h2>
+              <p style={{ margin: 0, fontSize: '13px', color: '#FEF3C7', maxWidth: '480px', lineHeight: '1.5' }}>
+                Earn <strong>{coinsWallet?.setting?.earningRatePercent || 5}% cashback</strong> in FreshCoins on every doorstep order delivered. Automatically redeemable at checkout to save on your daily greens!
+              </p>
+            </div>
+
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.2)',
+              border: '1.5px solid rgba(254, 240, 138, 0.4)',
+              borderRadius: '16px',
+              padding: '16px 24px',
+              textAlign: 'center',
+              minWidth: '160px'
+            }}>
+              <div style={{ fontSize: '32px', fontWeight: 900, color: '#FEF08A', letterSpacing: '-0.5px' }}>
+                {coinsWallet?.balance || 0}
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
+                FreshCoins (₹{((coinsWallet?.balance || 0) * (coinsWallet?.setting?.coinRupeeValue || 1.0)).toFixed(2)})
+              </div>
+              <div style={{ fontSize: '11px', color: '#FDE68A', marginTop: '4px' }}>
+                Lifetime Earned: {coinsWallet?.lifetimeEarned || 0}
+              </div>
+            </div>
+          </div>
+
+          {/* FreshCoins Passbook & Transaction Ledger */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '18px',
+            border: '1.5px solid #E5ECE7',
+            padding: '20px 24px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#15221B', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Coins size={16} color="#D97706" />
+              <span>FreshCoins Passbook ({coinsWallet?.history?.length || 0} Transactions)</span>
+            </h3>
+
+            {!coinsWallet?.history || coinsWallet.history.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 10px', color: '#64748B', fontSize: '13px' }}>
+                <Coins size={32} color="#CBD5E1" style={{ margin: '0 auto 8px' }} />
+                <div>No coin transactions yet.</div>
+                <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>
+                  Place an order to earn <strong>{coinsWallet?.setting?.earningRatePercent || 5}% FreshCoins</strong> upon verified doorstep delivery!
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {coinsWallet.history.map(tx => (
+                  <div
+                    key={tx.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '10px',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: tx.type === 'EARNED' ? '#ECFDF5' : tx.type === 'REDEEMED' ? '#FEF3C7' : '#EFF6FF',
+                          color: tx.type === 'EARNED' ? '#047857' : tx.type === 'REDEEMED' ? '#92400E' : '#1E40AF',
+                          border: tx.type === 'EARNED' ? '1px solid #A7F3D0' : tx.type === 'REDEEMED' ? '1px solid #FDE68A' : '1px solid #BFDBFE'
+                        }}>
+                          {tx.type}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#1E293B' }}>
+                          {tx.description || (tx.type === 'EARNED' ? 'Delivery Cashback' : tx.type === 'REDEEMED' ? 'Redeemed at Checkout' : 'Refund')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                        {new Date(tx.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {tx.orderId ? ` • Order #${tx.orderId}` : ''}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: 900,
+                        color: tx.coins > 0 ? '#16A34A' : '#DC2626'
+                      }}>
+                        {tx.coins > 0 ? `+${tx.coins}` : tx.coins} Coins
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>
+                        ₹{tx.rupeeValue}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {/* Header Card */}
           <div style={{
             background: 'linear-gradient(135deg, #1E3D31 0%, #15221B 100%)',
@@ -1899,7 +2199,266 @@ export default function UserProfilePage({ forcedTab }) {
         </div>
       )}
 
-      {/* Cancel Order Confirmation Modal */}
+      {/* TAB 5: MY REVIEWS & COMMUNITY FEEDBACK */}
+      {activeTab === 'reviews' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, #1E3D31 0%, #15221B 100%)',
+            color: '#FFFFFF',
+            borderRadius: '20px',
+            padding: '24px 28px',
+            boxShadow: '0 8px 24px rgba(21, 34, 27, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '18px'
+          }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.15)', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
+                <Star size={14} color="#FDE047" />
+                <span>Verified Resident Reviews</span>
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.3px' }}>
+                My Submitted Reviews & Feedback
+              </h2>
+              <p style={{ margin: 0, fontSize: '13px', color: '#CBD5E1', maxWidth: '500px', lineHeight: '1.5' }}>
+                All the produce quality, doorstep delivery, and website feedback you have shared with our sourcing mandis and apartment neighbors.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                borderRadius: '16px',
+                padding: '14px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: '#86EFAC' }}>
+                  {myReviews.length}
+                </div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#E2E8F0', marginTop: '2px' }}>
+                  Reviews Written
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const existing = myReviews.find(r => r.type === 'WEBSITE');
+                  if (existing) {
+                    setWebsiteRating(existing.rating || 5);
+                    setWebsiteComment(existing.comment || '');
+                  } else {
+                    setWebsiteRating(5);
+                    setWebsiteComment('');
+                  }
+                  setIsWebsiteReviewOpen(true);
+                }}
+                style={{
+                  alignSelf: 'center',
+                  background: '#86EFAC',
+                  color: '#15221B',
+                  border: 'none',
+                  padding: '10px 18px',
+                  borderRadius: '9999px',
+                  fontWeight: 800,
+                  fontSize: '12.5px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <MessageSquare size={14} />
+                <span>Website Feedback</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reviews List */}
+          <div>
+            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#15221B', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Submitted Reviews ({myReviews.length})</span>
+            </h3>
+
+            {myReviews.length === 0 ? (
+              <div style={{
+                background: '#FFFFFF',
+                borderRadius: '18px',
+                border: '1.5px solid #E5ECE7',
+                padding: '40px 24px',
+                textAlign: 'center',
+                color: '#64748B'
+              }}>
+                <Star size={36} color="#CBD5E1" style={{ margin: '0 auto 12px' }} />
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#15221B', marginBottom: '4px' }}>
+                  You haven't written any reviews yet
+                </div>
+                <p style={{ fontSize: '13px', color: '#52635A', maxWidth: '420px', margin: '0 auto 16px' }}>
+                  Rate your delivered produce and doorstep delivery under <strong>Purchase History</strong> to help your apartment neighbors and earn exclusive discount vouchers!
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/history')}
+                  style={{
+                    background: '#234B3C',
+                    color: '#FFF',
+                    padding: '8px 20px',
+                    borderRadius: '9999px',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  View Delivered Orders to Rate
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                {myReviews.map(rev => {
+                  const targetOrder = userOrders.find(o => o.id === rev.orderId);
+                  return (
+                    <div
+                      key={rev.id}
+                      style={{
+                        background: '#FFFFFF',
+                        borderRadius: '16px',
+                        border: '1.5px solid #E5ECE7',
+                        padding: '18px 20px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                      }}
+                    >
+                      <div>
+                        {/* Top Row: Type Badge + Moderation Status */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            background: rev.type === 'PRODUCT' ? '#ECFDF5' : rev.type === 'DELIVERY' ? '#EFF6FF' : '#FEF3C7',
+                            color: rev.type === 'PRODUCT' ? '#047857' : rev.type === 'DELIVERY' ? '#1E40AF' : '#92400E',
+                            border: rev.type === 'PRODUCT' ? '1px solid #A7F3D0' : rev.type === 'DELIVERY' ? '1px solid #BFDBFE' : '1px solid #FDE68A'
+                          }}>
+                            {rev.type === 'PRODUCT' ? '🥬 Produce Quality' : rev.type === 'DELIVERY' ? '🚚 Doorstep Delivery' : '🌐 Website Experience'}
+                          </span>
+
+                          <span style={{
+                            fontSize: '10.5px',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: rev.status === 'APPROVED' ? '#ECFDF5' : rev.status === 'HIDDEN' ? '#F1F5F9' : '#FFFBEB',
+                            color: rev.status === 'APPROVED' ? '#059669' : rev.status === 'HIDDEN' ? '#64748B' : '#D97706',
+                            border: rev.status === 'APPROVED' ? '1px solid #A7F3D0' : rev.status === 'HIDDEN' ? '1px solid #CBD5E1' : '1px solid #FCD34D'
+                          }}>
+                            {rev.status === 'APPROVED' ? '✓ Approved • Visible' : rev.status === 'HIDDEN' ? 'Archived' : '⏱ Under Review'}
+                          </span>
+                        </div>
+
+                        {/* Title / Target info */}
+                        <div style={{ fontWeight: 800, fontSize: '14.5px', color: '#15221B', marginBottom: '4px' }}>
+                          {rev.type === 'PRODUCT' ? (rev.productName || 'Fresh Harvest Crop') : rev.type === 'DELIVERY' ? 'Morning Doorstep Delivery' : 'Freshioz Service & Platform'}
+                        </div>
+
+                        {rev.orderId && (
+                          <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '8px' }}>
+                            Order <strong>#{rev.orderId}</strong>
+                            {targetOrder?.deliveryDate ? ` • Delivered on ${targetOrder.deliveryDate}` : ''}
+                          </div>
+                        )}
+
+                        {/* Stars */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '8px' }}>
+                          {[1, 2, 3, 4, 5].map(starVal => (
+                            <Star
+                              key={starVal}
+                              size={15}
+                              color={starVal <= rev.rating ? '#F59E0B' : '#CBD5E1'}
+                              fill={starVal <= rev.rating ? '#F59E0B' : 'none'}
+                            />
+                          ))}
+                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#15221B', marginLeft: '6px' }}>
+                            {rev.rating}.0 / 5.0
+                          </span>
+                        </div>
+
+                        {/* Comment text */}
+                        {rev.comment ? (
+                          <div style={{
+                            fontSize: '13px',
+                            color: '#334155',
+                            lineHeight: 1.5,
+                            background: '#F8FAFC',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            fontStyle: 'italic',
+                            borderLeft: '3px solid #10B981'
+                          }}>
+                            "{rev.comment}"
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic' }}>
+                            No written comments provided.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom Footer: Date + Edit Button */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1F5F9', paddingTop: '10px', marginTop: '6px' }}>
+                        <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                          {new Date(rev.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (rev.type === 'WEBSITE') {
+                              setWebsiteRating(rev.rating || 5);
+                              setWebsiteComment(rev.comment || '');
+                              setIsWebsiteReviewOpen(true);
+                            } else if (targetOrder) {
+                              handleOpenReviewModal(targetOrder);
+                              if (rev.type === 'DELIVERY') {
+                                setReviewActiveTab('DELIVERY');
+                              } else if (rev.productId) {
+                                const prodItem = targetOrder.items?.find(i => (i.productId || i.id) === rev.productId);
+                                if (prodItem) setSelectedReviewProduct(prodItem);
+                              }
+                            } else {
+                              alert(`Order #${rev.orderId} could not be loaded to edit. You can rate it from Purchase History.`);
+                            }
+                          }}
+                          style={{
+                            background: '#F1F5F9',
+                            color: '#234B3C',
+                            border: '1px solid #CBD5E1',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit Review
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {cancellingOrder && (
         <div className="modal-backdrop-overlay">
           <div className="modal-dialog-box" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>

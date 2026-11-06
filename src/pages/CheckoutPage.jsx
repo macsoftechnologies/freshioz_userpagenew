@@ -16,7 +16,8 @@ import {
   X,
   Gift,
   Tag,
-  Check
+  Check,
+  Coins
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { discountService } from '../services/discountService';
@@ -56,6 +57,25 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [coinsWallet, setCoinsWallet] = useState(null);
+  const [useFreshCoins, setUseFreshCoins] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchCoins() {
+      if (!activeUser) return;
+      try {
+        const wallet = await paymentService.getMyFreshCoinsWallet();
+        if (isMounted && wallet) {
+          setCoinsWallet(wallet);
+        }
+      } catch (e) {
+        console.warn('Could not fetch FreshCoins wallet:', e);
+      }
+    }
+    fetchCoins();
+    return () => { isMounted = false; };
+  }, [activeUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -137,7 +157,16 @@ export default function CheckoutPage() {
   }
 
   const discountDeduction = appliedDiscount ? Math.min(appliedDiscount.calculatedDeduction, cartSubtotal) : 0;
-  const grandTotal = Math.max(0, cartSubtotal + (cartSubtotal > 0 ? deliveryFee : 0) + (cartGst || 0) - discountDeduction);
+  const coinRupeeVal = coinsWallet?.setting?.coinRupeeValue || 1.0;
+  const maxRedeemPercent = coinsWallet?.setting?.maxRedemptionPercent || 25.0;
+  const minCoinsOrder = coinsWallet?.setting?.minOrderValue || 100.0;
+  const userCoinsBalance = Number(coinsWallet?.balance) || 0;
+  const isCoinsProgramActive = coinsWallet?.setting?.isEnabled !== false;
+  const isCartEligibleForCoins = isCoinsProgramActive && cartSubtotal >= minCoinsOrder && userCoinsBalance > 0;
+  const maxCoinsAllowedForCart = Math.floor((cartSubtotal * (maxRedeemPercent / 100)) / coinRupeeVal);
+  const applicableCoins = Math.min(userCoinsBalance, maxCoinsAllowedForCart);
+  const freshCoinsDiscountDeduction = useFreshCoins && isCartEligibleForCoins ? Number((applicableCoins * coinRupeeVal).toFixed(2)) : 0;
+  const grandTotal = Math.max(0, cartSubtotal + (cartSubtotal > 0 ? deliveryFee : 0) + (cartGst || 0) - discountDeduction - freshCoinsDiscountDeduction);
 
   let estimatedCashback = 0;
   if (selectedSociety) {
@@ -171,7 +200,9 @@ export default function CheckoutPage() {
           deliverySlot,
           paymentMethod: 'PAY_ON_DELIVERY',
           discountCode: appliedDiscount?.code,
-          discountAmount: discountDeduction
+          discountAmount: discountDeduction,
+          freshCoinsUsed: useFreshCoins && isCartEligibleForCoins ? applicableCoins : 0,
+          freshCoinsDiscount: freshCoinsDiscountDeduction
         });
         setIsConfirmOrderModalOpen(false);
         setIsPlacing(false);
@@ -216,6 +247,8 @@ export default function CheckoutPage() {
         totalAmount: grandTotal,
         discountCode: appliedDiscount?.code || undefined,
         discountAmount: discountDeduction > 0 ? discountDeduction : undefined,
+        freshCoinsUsed: (useFreshCoins && isCartEligibleForCoins && applicableCoins > 0) ? applicableCoins : undefined,
+        freshCoinsDiscount: freshCoinsDiscountDeduction > 0 ? freshCoinsDiscountDeduction : undefined,
         deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
         deliverySlot: deliverySlot || defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)',
         paymentMethod: 'UPI',
@@ -608,6 +641,66 @@ export default function CheckoutPage() {
           </div>
           */}
 
+          {/* FreshCoins Loyalty Redemption Section */}
+          {userCoinsBalance > 0 && isCoinsProgramActive && (
+            <div style={{
+              background: useFreshCoins ? '#FEF3C7' : '#FFFBEB',
+              border: useFreshCoins ? '1.5px solid #F59E0B' : '1px dashed #FCD34D',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              marginBottom: '14px',
+              transition: 'all 0.2s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#F59E0B',
+                    color: '#FFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900
+                  }}>
+                    <Coins size={16} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '13px', color: '#92400E' }}>
+                      Redeem FreshCoins Balance
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#B45309' }}>
+                      Available: <strong>{userCoinsBalance} Coins</strong> (₹{userCoinsBalance * coinRupeeVal})
+                    </div>
+                  </div>
+                </div>
+
+                {isCartEligibleForCoins ? (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 800, fontSize: '12px', color: '#92400E' }}>
+                    <input
+                      type="checkbox"
+                      checked={useFreshCoins}
+                      onChange={(e) => setUseFreshCoins(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: '#D97706', cursor: 'pointer' }}
+                    />
+                    <span>Apply ₹{applicableCoins * coinRupeeVal}</span>
+                  </label>
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 600 }}>
+                    {cartSubtotal < minCoinsOrder ? `Min order ₹${minCoinsOrder}` : 'Not eligible'}
+                  </span>
+                )}
+              </div>
+
+              {useFreshCoins && isCartEligibleForCoins && (
+                <div style={{ fontSize: '11.5px', color: '#78350F', marginTop: '6px', borderTop: '1px solid #FDE68A', paddingTop: '6px' }}>
+                  ✓ <strong>{applicableCoins} FreshCoins</strong> will be redeemed (₹{applicableCoins * coinRupeeVal} deducted from total payable).
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Rewards & Promo Code Section */}
           <div style={{
             borderTop: '1px solid #E5ECE7',
@@ -794,6 +887,12 @@ export default function CheckoutPage() {
               <div className="bill-summary-row" style={{ color: '#059669', fontWeight: 700 }}>
                 <span>Reward / Coupon Discount ({appliedDiscount?.code})</span>
                 <span>-₹{discountDeduction}</span>
+              </div>
+            )}
+            {freshCoinsDiscountDeduction > 0 && (
+              <div className="bill-summary-row" style={{ color: '#D97706', fontWeight: 700 }}>
+                <span>FreshCoins Redeemed ({applicableCoins} coins)</span>
+                <span>-₹{freshCoinsDiscountDeduction}</span>
               </div>
             )}
             <div className="bill-total-row">
