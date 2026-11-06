@@ -964,6 +964,277 @@ button {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Hero Right Visual Produce Styling */
+.hero-right-visual {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  max-width: 52%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.hero-produce-right-img {
+  height: 100%;
+  max-height: 280px;
+  width: auto;
+  object-fit: cover;
+  object-position: right center;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 28%);
+  mask-image: linear-gradient(to right, transparent 0%, black 28%);
+}
+
+@media (max-width: 768px) {
+  .hero-right-visual {
+    opacity: 0.28;
+    max-width: 75%;
+  }
+}
+
+/* ==========================================================================
+   HOMEPAGE RESIDENT TESTIMONIALS SECTION
+   ========================================================================== */
+.home-testimonials-wrap {
+  margin: 44px auto 32px;
+  position: relative;
+}
+
+.testimonials-header-block {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 28px;
+}
+
+.testimonials-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #EBF7E5;
+  border: 1px solid #C3E6B4;
+  color: #234B3C;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: 10px;
+}
+
+.testimonials-main-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #173328;
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+
+.testimonials-stars-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 13.5px;
+  color: #52635A;
+}
+
+.stars-cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rating-score-text {
+  font-weight: 800;
+  color: #173328;
+}
+
+.rating-divider {
+  color: #CBD5E1;
+}
+
+.rating-desc-text {
+  color: #52635A;
+  font-weight: 500;
+}
+
+.testimonials-track-wrapper {
+  position: relative;
+}
+
+.testimonials-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .testimonials-cards-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+    padding-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .testimonials-cards-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .testimonial-resident-card {
+    min-width: 82vw;
+    max-width: 320px;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+
+.testimonial-resident-card {
+  background: #FFFFFF;
+  border: 1px solid #E5ECE7;
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 18px rgba(35, 75, 60, 0.04);
+  transition: all 0.25s ease;
+}
+
+.testimonial-resident-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(35, 75, 60, 0.09);
+  border-color: #C3E6B4;
+}
+
+.card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.card-stars-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.verified-resident-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #15803D;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.card-review-quote {
+  font-size: 13.5px;
+  color: #334155;
+  line-height: 1.6;
+  margin-bottom: 18px;
+  flex: 1;
+  font-style: italic;
+}
+
+.card-resident-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #F1F5F3;
+}
+
+.resident-avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #234B3C 0%, #78B159 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.resident-details-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.resident-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1E293B;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resident-location-sub {
+  font-size: 11.5px;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.delivery-status-stamp {
+  font-size: 10.5px;
+  color: #16A34A;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.testimonials-nav-controls {
+  display: none;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .testimonials-nav-controls {
+    display: flex;
+  }
+}
+
+.testimonials-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid #E5ECE7;
+  color: #234B3C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.testimonials-nav-btn:hover {
+  background: #234B3C;
+  color: #FFFFFF;
+}
+
 /* Society Cashback Banner inside Hero */
 .hero-society-perk-card {
   background: rgba(255, 255, 255, 0.08);
