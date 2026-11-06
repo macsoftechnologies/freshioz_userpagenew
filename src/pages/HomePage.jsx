@@ -132,7 +132,7 @@ export default function HomePage() {
         <div className="hero-glass-card hero-desktop-only">
           <div className="hero-left-content">
             <div className="hero-tag-badge">
-              <Leaf size={14} color="#78B159" />
+              <Leaf size={13} color="#78B159" />
               <span>Next-Day Farm Harvest</span>
             </div>
 
@@ -155,7 +155,7 @@ export default function HomePage() {
                 }}
               >
                 <span>Explore Daily Harvest</span>
-                <ArrowRight size={16} />
+                <ArrowRight size={15} />
               </button>
 
               {/* Bulk Wholesale Crates button - Commented out for retail concentration

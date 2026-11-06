@@ -86,7 +86,7 @@ export default function AppFooter() {
       <div className="footer-bottom-bar">
         <div className="footer-bottom-inner">
           <div className="copyright-text">
-            © 2026 Freshioz Technologies Pvt Ltd • Direct APMC Mandis & Regional Hubs, Bengaluru
+            Freshioz
           </div>
         </div>
       </div>
