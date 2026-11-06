@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import ProductCard from '../components/product/ProductCard';
+import ModernizedVanTransitHero from '../components/common/ModernizedVanTransitHero';
 import { reviewService } from '../services/reviewService';
 
 // Verified resident testimonials from active communities
@@ -162,8 +163,17 @@ export default function HomePage() {
     <div>
       {/* Hero Banner Section */}
       <section className="home-hero-wrap">
-        {/* Compact 270px Hero Banner with fresh vegetables crate */}
-        <div className="hero-glass-card">
+        {/* Modernized Freshioz Express Delivery Van Animated Hero for Mobile & Tablet (< 1024px) */}
+        <ModernizedVanTransitHero 
+          mode="retail"
+          onClick={() => {
+            if (!activeUser) setIsAuthModalOpen(true);
+            navigate('/catalog');
+          }}
+        />
+
+        {/* Compact 270px Hero Banner with fresh vegetables crate for Desktop (>= 1024px) */}
+        <div className="hero-glass-card hero-desktop-only">
           <div className="hero-left-content">
             <div className="hero-tag-badge">
               <Leaf size={13} color="#78B159" />
