@@ -5,7 +5,7 @@ import { useStore } from '../../context/StoreContext';
 
 export default function CustomerNotificationBell() {
   const navigate = useNavigate();
-  const { store, activeUser, partnerAuth } = useStore();
+  const { store, activeUser, partnerAuth, setIsAuthModalOpen } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -130,8 +130,6 @@ export default function CustomerNotificationBell() {
     return list;
   }, [store?.orders, activeUser, partnerAuth]);
 
-  if (!activeUser && !partnerAuth) return null;
-
   const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
 
   const markRead = (id) => {
@@ -165,40 +163,37 @@ export default function CustomerNotificationBell() {
         title="Order & Delivery Updates"
         style={{
           position: 'relative',
-          width: '36px',
           height: '36px',
+          padding: '0 10px',
           borderRadius: '10px',
-          background: isOpen ? '#EBF2EE' : '#F8FAFC',
-          border: '1px solid #CBD5E1',
-          display: 'flex',
+          background: unreadCount > 0 ? '#FEF3C7' : (isOpen ? '#EBF2EE' : '#F8FAFC'),
+          border: unreadCount > 0 ? '1.5px solid #F59E0B' : '1px solid #CBD5E1',
+          display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#234B3C',
+          gap: '5px',
+          color: unreadCount > 0 ? '#B45309' : '#234B3C',
+          fontWeight: 800,
+          fontSize: '12px',
           cursor: 'pointer'
         }}
       >
-        <Bell size={17} />
-        {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '-4px',
-            right: '-4px',
-            background: '#DC2626',
-            color: '#FFFFFF',
-            fontSize: '10px',
-            fontWeight: 800,
-            minWidth: '17px',
-            height: '17px',
-            padding: '0 4px',
-            borderRadius: '9999px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1.5px solid #FFFFFF'
-          }}>
-            {unreadCount}
-          </span>
-        )}
+        <Bell size={16} />
+        <span style={{
+          background: unreadCount > 0 ? '#DC2626' : '#E2E8F0',
+          color: unreadCount > 0 ? '#FFFFFF' : '#475569',
+          fontSize: '10px',
+          fontWeight: 800,
+          minWidth: '17px',
+          height: '17px',
+          padding: '0 5px',
+          borderRadius: '9999px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {unreadCount}
+        </span>
       </button>
 
       {isOpen && (
@@ -247,7 +242,32 @@ export default function CustomerNotificationBell() {
           </div>
 
           <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-            {notifications.length === 0 ? (
+            {!activeUser && !partnerAuth ? (
+              <div style={{ padding: '18px 14px', textAlign: 'center', color: '#475569', fontSize: '12px' }}>
+                <div style={{ marginBottom: '10px', fontWeight: 600 }}>
+                  Log in to receive real-time order, delivery & FreshCoins notifications.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    if (setIsAuthModalOpen) setIsAuthModalOpen(true);
+                  }}
+                  style={{
+                    background: '#234B3C',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '6px 14px',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Login to View Alerts
+                </button>
+              </div>
+            ) : notifications.length === 0 ? (
               <div style={{ padding: '22px 14px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
                 No order notifications yet.
               </div>
