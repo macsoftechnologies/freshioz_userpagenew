@@ -7,9 +7,9 @@ const StoreContext = createContext(null);
 
 // Default Customer Delivery Slots for resilient fallback across all hubs
 export const DEFAULT_WAREHOUSE_SLOTS = [
-  { id: 'SLOT_DAWN', label: 'Early Dawn Drop (05:30 AM - 07:00 AM)', timeWindow: '05:30 AM - 07:00 AM', desc: 'Security desk / gate drop before morning commute', enabled: true },
-  { id: 'SLOT_MORNING', label: 'Morning Fresh Slot (07:00 AM - 08:30 AM)', timeWindow: '07:00 AM - 08:30 AM', desc: 'Doorstep direct delivery fresh from dawn harvest', enabled: true },
-  { id: 'SLOT_EVENING', label: 'Evening Fresh Run (05:30 PM - 07:30 PM)', timeWindow: '05:30 PM - 07:30 PM', desc: 'Fresh batch delivery for evening dinner prep', enabled: true }
+  { id: 'SLOT_DAWN', label: 'Early Dawn Drop', startTime: '05:30', endTime: '07:00', timeWindow: '05:30 AM – 07:00 AM', desc: 'Security desk / gate drop before morning commute', enabled: true },
+  { id: 'SLOT_MORNING', label: 'Morning Fresh Slot', startTime: '07:00', endTime: '08:30', timeWindow: '07:00 AM – 08:30 AM', desc: 'Doorstep direct delivery fresh from dawn harvest', enabled: true },
+  { id: 'SLOT_EVENING', label: 'Evening Fresh Run', startTime: '17:30', endTime: '19:30', timeWindow: '05:30 PM – 07:30 PM', desc: 'Fresh batch delivery for evening dinner prep', enabled: true }
 ];
 
 export function StoreProvider({ children }) {
