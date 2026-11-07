@@ -14,6 +14,7 @@ import {
   Building2
 } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
+import CustomerNotificationBell from '../common/CustomerNotificationBell';
 import { useStore } from '../../context/StoreContext';
 import SearchRecommendations from '../search/SearchRecommendations';
 
@@ -285,6 +286,8 @@ export default function DesktopHeader({ onSearchChange, searchQuery = '' }) {
               <span>Login</span>
             </button>
           ) : null}
+
+          <CustomerNotificationBell />
 
           {/* Cart Button */}
           <button

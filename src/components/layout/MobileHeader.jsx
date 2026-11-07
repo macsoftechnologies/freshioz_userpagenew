@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Search, ShoppingBag, X } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
+import CustomerNotificationBell from '../common/CustomerNotificationBell';
 import { useStore } from '../../context/StoreContext';
 import SearchRecommendations from '../search/SearchRecommendations';
 
@@ -33,7 +34,8 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
           <FreshiozLogo height={48} showTagline={false} />
         </div>
 
-        <div className="mobile-right-cluster">
+        <div className="mobile-right-cluster" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CustomerNotificationBell />
           <button
             type="button"
             className="mobile-cart-btn"
