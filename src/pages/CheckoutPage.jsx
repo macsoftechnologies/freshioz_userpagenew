@@ -19,7 +19,7 @@ import {
   Check,
   Coins
 } from 'lucide-react';
-import { useStore } from '../context/StoreContext';
+import { useStore, DEFAULT_WAREHOUSE_SLOTS } from '../context/StoreContext';
 import { discountService } from '../services/discountService';
 import { paymentService } from '../services/paymentService';
 
@@ -42,10 +42,25 @@ export default function CheckoutPage() {
     getProductBulkPricing
   } = useStore();
 
-  const [deliverySlot, setDeliverySlot] = useState(defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)');
+  const warehouseSlots = (Array.isArray(defaultWarehouse?.slots) && defaultWarehouse.slots.length > 0)
+    ? defaultWarehouse.slots
+    : DEFAULT_WAREHOUSE_SLOTS;
+  const availableSlots = warehouseSlots.filter(s => s.enabled !== false);
+
+  const [deliverySlot, setDeliverySlot] = useState(availableSlots[0]?.label || DEFAULT_WAREHOUSE_SLOTS[0].label);
   const [paymentMethod, setPaymentMethod] = useState('PAY_ON_DELIVERY');
   const [isPlacing, setIsPlacing] = useState(false);
   const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
+
+  // Auto-sync deliverySlot whenever warehouse slots load or change
+  useEffect(() => {
+    if (availableSlots.length > 0) {
+      const match = availableSlots.find(s => s.label === deliverySlot || s.id === deliverySlot);
+      if (!match) {
+        setDeliverySlot(availableSlots[0].label);
+      }
+    }
+  }, [defaultWarehouse?.slots, availableSlots.length]);
 
   // Gateway status & feedback
   const [gatewayConfig, setGatewayConfig] = useState({ enabled: false, keyId: null, activeMode: 'TEST' });
@@ -250,7 +265,7 @@ export default function CheckoutPage() {
         freshCoinsUsed: (useFreshCoins && isCartEligibleForCoins && applicableCoins > 0) ? applicableCoins : undefined,
         freshCoinsDiscount: freshCoinsDiscountDeduction > 0 ? freshCoinsDiscountDeduction : undefined,
         deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
-        deliverySlot: deliverySlot || defaultWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)',
+        deliverySlot: deliverySlot || availableSlots[0]?.label || DEFAULT_WAREHOUSE_SLOTS[0].label,
         paymentMethod: 'UPI',
         paymentStatus: 'PAID',
         items: cart.map(i => {
@@ -414,7 +429,7 @@ export default function CheckoutPage() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {(defaultWarehouse?.slots || []).map(slot => (
+              {availableSlots.map(slot => (
                 <label
                   key={slot.id}
                   style={{
@@ -437,7 +452,10 @@ export default function CheckoutPage() {
                       style={{ accentColor: '#234B3C' }}
                     />
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#15221B' }}>{slot.label}</div>
+                      <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#15221B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{(slot.id && slot.id.includes('DAWN')) ? '🌅' : ((slot.id && slot.id.includes('MORNING')) ? '☀️' : ((slot.id && slot.id.includes('EVENING')) ? '🌆' : '✨'))}</span>
+                        <span>{slot.label}</span>
+                      </div>
                       <div style={{ fontSize: '12px', color: '#52635A' }}>{slot.timeWindow} • {slot.desc}</div>
                     </div>
                   </div>

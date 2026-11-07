@@ -5,6 +5,13 @@ import { API_BASE_URL } from '../api/client';
 
 const StoreContext = createContext(null);
 
+// Default Customer Delivery Slots for resilient fallback across all hubs
+export const DEFAULT_WAREHOUSE_SLOTS = [
+  { id: 'SLOT_DAWN', label: 'Early Dawn Drop (05:30 AM - 07:00 AM)', timeWindow: '05:30 AM - 07:00 AM', desc: 'Security desk / gate drop before morning commute', enabled: true },
+  { id: 'SLOT_MORNING', label: 'Morning Fresh Slot (07:00 AM - 08:30 AM)', timeWindow: '07:00 AM - 08:30 AM', desc: 'Doorstep direct delivery fresh from dawn harvest', enabled: true },
+  { id: 'SLOT_EVENING', label: 'Evening Fresh Run (05:30 PM - 07:30 PM)', timeWindow: '05:30 PM - 07:30 PM', desc: 'Fresh batch delivery for evening dinner prep', enabled: true }
+];
+
 export function StoreProvider({ children }) {
   const queryClient = useQueryClient();
   const catalog = useCatalog();
@@ -130,9 +137,17 @@ export function StoreProvider({ children }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Calculate Warehouse Cut-Off Logistics directly based on Resident's Society Serving Regional Warehouse Hub
-  const servingWarehouse = (store.warehouses || []).find(w => w.id === selectedSociety?.warehouseId) 
+  const rawServingWarehouse = (store.warehouses || []).find(w => w.id === selectedSociety?.warehouseId) 
     || (store.warehouses || [])[0] 
-    || { cutoffTime: '21:00', openTime: '05:00', slots: [] };
+    || { cutoffTime: '23:30', openTime: '05:00', slots: DEFAULT_WAREHOUSE_SLOTS };
+
+  const servingWarehouse = {
+    ...rawServingWarehouse,
+    cutoffTime: rawServingWarehouse.cutoffTime || '23:30',
+    slots: (Array.isArray(rawServingWarehouse.slots) && rawServingWarehouse.slots.length > 0)
+      ? rawServingWarehouse.slots
+      : DEFAULT_WAREHOUSE_SLOTS
+  };
   const defaultWarehouse = servingWarehouse;
   
   const getCutoffCalculations = () => {
@@ -140,27 +155,32 @@ export function StoreProvider({ children }) {
     const currentHours = now.getHours();
     const currentMinutes = now.getMinutes();
     
-    // Parse serving warehouse cutoff time e.g. "21:00" or "02:00"
-    const [cutoffH, cutoffM] = (servingWarehouse.cutoffTime || '21:00').split(':').map(Number);
+    // Parse serving warehouse cutoff time e.g. "23:30" or "02:00"
+    const [cutoffH, cutoffM] = (servingWarehouse.cutoffTime || '23:30').split(':').map(Number);
     
     let isPastCutoff = false;
     const deliveryDateObj = new Date();
 
     if (cutoffH <= 6) {
       // Dawn cutoff (e.g. 02:00 AM)
+      // Orders placed between midnight and 02:00 AM deliver TODAY morning!
       if (currentHours < cutoffH || (currentHours === cutoffH && currentMinutes < cutoffM)) {
-        // Late night before dawn cutoff -> delivery is TODAY morning!
+        isPastCutoff = false;
+        // Delivers today morning (deliveryDateObj stays today)
       } else {
-        // After dawn cutoff -> delivery is TOMORROW morning!
+        // After dawn cutoff (e.g. daytime orders) -> delivers TOMORROW morning!
+        isPastCutoff = false;
         deliveryDateObj.setDate(deliveryDateObj.getDate() + 1);
       }
     } else {
-      // Standard evening cutoff (e.g. 21:00 or 23:30)
+      // Standard evening / extended night cutoff (e.g. 21:00 or 23:30)
       isPastCutoff = (currentHours > cutoffH) || (currentHours === cutoffH && currentMinutes >= cutoffM);
       if (isPastCutoff) {
-        deliveryDateObj.setDate(deliveryDateObj.getDate() + 2); // Day after tomorrow
+        // Cutoff passed tonight -> produce harvested for Day After Tomorrow
+        deliveryDateObj.setDate(deliveryDateObj.getDate() + 2);
       } else {
-        deliveryDateObj.setDate(deliveryDateObj.getDate() + 1); // Tomorrow
+        // Before cutoff -> produce harvested for TOMORROW morning
+        deliveryDateObj.setDate(deliveryDateObj.getDate() + 1);
       }
     }
 
@@ -396,7 +416,7 @@ export function StoreProvider({ children }) {
     if (!activeUser || cart.length === 0) return null;
 
     const society = selectedSociety;
-    const defaultSlotLabel = servingWarehouse?.slots?.[0]?.label || 'Morning Fresh Slot (06:30 AM - 08:30 AM)';
+    const defaultSlotLabel = servingWarehouse?.slots?.[0]?.label || DEFAULT_WAREHOUSE_SLOTS[0].label;
 
     const userToken = localStorage.getItem('freshioz_user_token');
     const headers = { 'Content-Type': 'application/json' };
