@@ -240,22 +240,6 @@ export default function OrderTrackingPage() {
 
           {/* 10s Live Sync Indicator & Tap Refresh */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              background: '#ECFDF5',
-              color: '#065F46',
-              border: '1px solid #A7F3D0',
-              fontSize: '11px',
-              fontWeight: 800,
-              padding: '3px 10px',
-              borderRadius: '9999px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
-              <span>Live 10s Auto-Sync</span>
-            </span>
-
             <button
               type="button"
               onClick={() => fetchLiveTracking(false)}
