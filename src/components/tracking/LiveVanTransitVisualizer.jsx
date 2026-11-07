@@ -7,8 +7,6 @@ import {
   CheckCircle2, 
   MapPin, 
   Building2, 
-  ThermometerSnowflake,
-  ShieldCheck,
   Navigation
 } from 'lucide-react';
 
@@ -310,24 +308,6 @@ export default function LiveVanTransitVisualizer({
               </svg>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Telemetry Status Strip Below Highway */}
-      <div className="van-transit-telemetry-bar">
-        <div className="telemetry-pill">
-          <ThermometerSnowflake size={14} color="#78B159" />
-          <span>Cold-Chained: <strong>12°C - 14°C Controlled</strong></span>
-        </div>
-
-        <div className="telemetry-pill">
-          <ShieldCheck size={14} color="#78B159" />
-          <span>Quality Checked: <strong>100% Sorted at APMC Hub</strong></span>
-        </div>
-
-        <div className="telemetry-pill">
-          <MapPin size={14} color="#F28E14" />
-          <span>Destination: <strong>{currentOrder?.societyName || 'Society Drop Point'}</strong></span>
         </div>
       </div>
 

@@ -471,21 +471,26 @@ export default function OrderTrackingPage() {
         <h3 style={{ fontSize: '16px', color: '#15221B', margin: '0 0 12px', fontWeight: 800 }}>Items in this Order</h3>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {currentOrder?.items?.map((item, idx) => {
-            const cleanUnit = String(item.unit || '').replace(/\b(?:pc|pcs|pieces?)\b/gi, '').trim();
-            const unitLabel = cleanUnit ? `${item.qty} ${cleanUnit}` : `×${item.qty}`;
-            return (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx < currentOrder.items.length - 1 ? '1px dashed #F0F4F2' : 'none' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#15221B' }}>{item.name}</div>
-                  <div style={{ fontSize: '12px', color: '#52635A' }}>{unitLabel}</div>
-                </div>
-                <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '13.5px' }}>
-                  ₹{item.totalPrice !== undefined && item.totalPrice !== null ? item.totalPrice : (item.price * item.qty)}
+          {currentOrder?.items?.map((item, idx) => (
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: idx < currentOrder.items.length - 1 ? '1px dashed #F0F4F2' : 'none' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#15221B' }}>{item.name}</div>
+                <div style={{ fontSize: '12px', color: '#52635A', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ background: '#F1F5F9', color: '#0F172A', fontWeight: 700, fontSize: '11px', padding: '1px 6px', borderRadius: '4px' }}>
+                    Qty: {item.qty}
+                  </span>
+                  {item.unit && (
+                    <span style={{ color: '#64748B' }}>
+                      • {item.unit}
+                    </span>
+                  )}
                 </div>
               </div>
-            );
-          })}
+              <div style={{ fontWeight: 800, color: '#234B3C', fontSize: '13.5px' }}>
+                ₹{item.totalPrice !== undefined && item.totalPrice !== null ? item.totalPrice : (item.price * item.qty)}
+              </div>
+            </div>
+          ))}
           {(!currentOrder?.items || currentOrder.items.length === 0) && (
             <div style={{ fontSize: '13px', color: '#64748B', padding: '8px 0' }}>
               {currentOrder?.itemsCount ? `${currentOrder.itemsCount} produce item(s) included` : 'No item details available'}
