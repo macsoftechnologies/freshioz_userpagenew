@@ -447,7 +447,14 @@ export function StoreProvider({ children }) {
       freshCoinsUsed: Number(freshCoinsUsed) > 0 ? Number(freshCoinsUsed) : undefined,
       freshCoinsDiscount: appliedCoinsDiscountVal > 0 ? appliedCoinsDiscountVal : undefined,
       deliveryDate: cutoffInfo?.formattedDeliveryDate || new Date().toLocaleDateString('en-GB'),
-      deliverySlot: deliverySlot || defaultSlotLabel,
+      deliverySlot: (() => {
+        const chosen = deliverySlot || defaultSlotLabel;
+        const matchedSlot = (servingWarehouse?.slots || DEFAULT_WAREHOUSE_SLOTS).find(s => s.label === chosen || s.id === chosen);
+        if (matchedSlot && matchedSlot.timeWindow && !matchedSlot.label.includes(matchedSlot.timeWindow)) {
+          return `${matchedSlot.label} (${matchedSlot.timeWindow})`;
+        }
+        return chosen;
+      })(),
       paymentMethod: paymentMethod === 'UPI' || paymentMethod === 'ONLINE_RAZORPAY' ? 'UPI' : 'PAY_ON_DELIVERY',
       paymentStatus: (paymentMethod === 'UPI' || paymentMethod === 'ONLINE_RAZORPAY') ? 'PAID' : 'PENDING_COD',
       items: cart.map(i => {
