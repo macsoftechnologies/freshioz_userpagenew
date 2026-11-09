@@ -346,14 +346,13 @@ export function StoreProvider({ children }) {
 
   const cartItemCount = cart.reduce((acc, item) => acc + item.qty, 0);
 
-  // Calculate dynamic GST for current items in cart
+  // Calculate dynamic GST for current items in cart:
+  // Option 1: Consolidated Order-Level GST % based on sum of all products
+  const globalGstPercent = Number(store.deliveryConfig?.gstPercent ?? 0);
   const cartGst = Math.round(
-    cart.reduce((acc, item) => {
-      const prod = (store.products || []).find(p => p.id === item.productId);
-      const gstRate = prod?.gstPercent || 0;
-      const pricing = getProductBulkPricing(item, item.qty);
-      return acc + (gstRate > 0 ? (pricing.totalWithDiscount * gstRate) / 100 : 0);
-    }, 0)
+    globalGstPercent > 0 
+      ? (cartSubtotal * globalGstPercent) / 100 
+      : 0
   );
 
   // Dynamic delivery fee calculation from store.deliveryConfig
@@ -605,6 +604,7 @@ export function StoreProvider({ children }) {
         getProductBulkPricing,
         cartItemCount,
         cartGst,
+        globalGstPercent,
         deliveryConfig,
         deliveryFee,
         freeDeliveryThreshold,
