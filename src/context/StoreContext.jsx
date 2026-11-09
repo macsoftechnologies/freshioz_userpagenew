@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCatalog } from '../hooks/useCatalog';
 import { API_BASE_URL } from '../api/client';
+import { orderService } from '../services/orderService';
 
 const StoreContext = createContext(null);
 
@@ -46,16 +47,6 @@ export function StoreProvider({ children }) {
     ? catalog.societies
     : prevSocietiesRef.current;
 
-  const store = useMemo(() => ({
-    products: activeProducts,
-    categories: activeCategories,
-    units: activeUnits,
-    societies: activeSocieties,
-    warehouses: catalog.warehouses || [],
-    deliveryConfig: catalog.deliveryConfig,
-    orders: [],
-  }), [activeProducts, activeCategories, activeUnits, activeSocieties, catalog.warehouses, catalog.deliveryConfig]);
-
   // Current logged in user (stored locally)
   const [activeUser, setActiveUser] = useState(() => {
     try {
@@ -65,6 +56,35 @@ export function StoreProvider({ children }) {
       return null;
     }
   });
+
+  // Live polling for customer's orders so notifications and tracking milestones stay live
+  const userOrdersQuery = useQuery({
+    queryKey: ['customer-orders-live', activeUser?.phone],
+    queryFn: async () => {
+      if (!activeUser?.phone) return [];
+      try {
+        const res = await orderService.getAll({ phone: activeUser.phone });
+        return Array.isArray(res) ? res : [];
+      } catch (e) {
+        return [];
+      }
+    },
+    enabled: Boolean(activeUser?.phone),
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+  });
+
+  const customerLiveOrders = userOrdersQuery.data || [];
+
+  const store = useMemo(() => ({
+    products: activeProducts,
+    categories: activeCategories,
+    units: activeUnits,
+    societies: activeSocieties,
+    warehouses: catalog.warehouses || [],
+    deliveryConfig: catalog.deliveryConfig,
+    orders: customerLiveOrders,
+  }), [activeProducts, activeCategories, activeUnits, activeSocieties, catalog.warehouses, catalog.deliveryConfig, customerLiveOrders]);
 
   // Society / Community Partner authentication state
   const [partnerAuth, setPartnerAuth] = useState(() => {
@@ -593,6 +613,7 @@ export function StoreProvider({ children }) {
         servingWarehouse,
         defaultWarehouse,
         placeOrder,
+        refetchCustomerOrders: userOrdersQuery.refetch,
         requestNewSociety,
         // Modals
         isAuthModalOpen,

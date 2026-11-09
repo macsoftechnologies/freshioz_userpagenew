@@ -12,15 +12,18 @@ import {
   ShoppingBag,
   CreditCard,
   Building2,
-  PackageCheck
+  PackageCheck,
+  Camera,
+  XCircle
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { orderService } from '../services/orderService';
 import LiveVanTransitVisualizer from '../components/tracking/LiveVanTransitVisualizer';
+import { parseCancelReasonProof } from './UserProfilePage';
 
 export default function OrderTrackingPage() {
   const { orderId } = useParams();
-  const { store, activeUser } = useStore();
+  const { store, activeUser, refetchCustomerOrders } = useStore();
 
   const [liveServerOrder, setLiveServerOrder] = useState(null);
   const [_isLoadingLive, setIsLoadingLive] = useState(false);
@@ -31,6 +34,97 @@ export default function OrderTrackingPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
   const [cancelErrorMsg, setCancelErrorMsg] = useState('');
+
+  // Doorstep Rejection / Produce Return State (Option A)
+  const [isDoorstepModalOpen, setIsDoorstepModalOpen] = useState(false);
+  const [doorstepReason, setDoorstepReason] = useState('Produce Quality Damaged / Spoiled / Rotten');
+  const [doorstepNotes, setDoorstepNotes] = useState('');
+  const [doorstepPhotos, setDoorstepPhotos] = useState([]);
+  const [isConfirmingDoorstep, setIsConfirmingDoorstep] = useState(false);
+  const [isCancellingDoorstep, setIsCancellingDoorstep] = useState(false);
+  const [previewProofPhotoModal, setPreviewProofPhotoModal] = useState(null);
+
+  const handleDoorstepPhotoCapture = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const compressFile = (file) => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    Promise.all(files.map(compressFile))
+      .then((newPhotos) => {
+        setDoorstepPhotos(prev => [...prev, ...newPhotos].slice(0, 4));
+      })
+      .catch(() => {});
+  };
+
+  const handleConfirmDoorstepRejection = async (e) => {
+    e.preventDefault();
+    if (!currentOrder) return;
+    try {
+      setIsCancellingDoorstep(true);
+      setCancelErrorMsg('');
+      let fullReason = `Resident Doorstep Rejection: ${doorstepReason}${doorstepNotes ? ` - ${doorstepNotes}` : ''}`;
+      if (doorstepPhotos.length > 0) {
+        fullReason = `${fullReason} [PROOF_PHOTO]${doorstepPhotos[0]} [PROOF_PHOTOS]${JSON.stringify(doorstepPhotos)}`;
+      }
+
+      const updated = await orderService.cancel(currentOrder.id, {
+        reason: fullReason,
+      });
+
+      setLiveServerOrder(prev => ({
+        ...(prev || {}),
+        ...(updated || {}),
+        status: 'CANCELLED',
+        cancelledReason: fullReason,
+        cancelledAt: new Date().toISOString()
+      }));
+
+      if (refetchCustomerOrders) refetchCustomerOrders();
+
+      const isCod = (currentOrder.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder.paymentStatus === 'PENDING_COD';
+      setCancelSuccessMsg(
+        isCod
+          ? `Order #${currentOrder.id} produce rejected at doorstep. Driver will return crate to hub. No payment collected.`
+          : `Order #${currentOrder.id} produce rejected at doorstep. Driver will return crate to hub. A full refund of ₹${currentOrder.totalAmount} has been initiated.`
+      );
+
+      setIsDoorstepModalOpen(false);
+      setIsConfirmingDoorstep(false);
+      setDoorstepPhotos([]);
+      setDoorstepNotes('');
+    } catch (err) {
+      setCancelErrorMsg(err?.message || 'Failed to submit doorstep rejection. Please try again.');
+    } finally {
+      setIsCancellingDoorstep(false);
+    }
+  };
 
   // Secure order lookup: strictly match requested orderId for current user
   const userOrders = (store?.orders || []).filter(o => {
@@ -216,14 +310,58 @@ export default function OrderTrackingPage() {
           color: '#9B2C2C',
           marginBottom: '20px',
           display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
+          flexDirection: 'column',
+          gap: '8px'
         }}>
-          <AlertCircle size={20} color="#E53E3E" />
-          <div>
-            <strong>Order Cancelled:</strong> {currentOrder?.cancelledReason || 'Cancelled before delivery'}
-            {isCod ? ' • No payment collected (Pay on Delivery)' : ''}
-          </div>
+          {(() => {
+            const { cleanReason, photos: cancelPhotos } = parseCancelReasonProof(currentOrder?.cancelledReason);
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <AlertCircle size={20} color="#E53E3E" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ wordBreak: 'break-word', lineHeight: 1.4 }}>
+                    <strong>Order Cancelled:</strong> {cleanReason}
+                    {isCod ? ' • No payment collected (Pay on Delivery)' : ''}
+                  </div>
+                </div>
+
+                {cancelPhotos.length > 0 && (
+                  <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #FECACA' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Camera size={13} />
+                      <span>Doorstep Return / Inspection Proof ({cancelPhotos.length} photo{cancelPhotos.length > 1 ? 's' : ''}):</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {cancelPhotos.map((photo, pIdx) => (
+                        <button
+                          key={pIdx}
+                          type="button"
+                          onClick={() => setPreviewProofPhotoModal(photo)}
+                          style={{
+                            padding: 0,
+                            border: '1.5px solid #FCA5A5',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            background: '#FFF',
+                            cursor: 'pointer',
+                            width: '54px',
+                            height: '54px'
+                          }}
+                          title="Click to enlarge photo proof"
+                        >
+                          <img
+                            src={photo}
+                            alt={`Proof ${pIdx + 1}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -518,7 +656,8 @@ export default function OrderTrackingPage() {
           </div>
         </div>
 
-        {!['DELIVERED', 'CANCELLED'].includes(currentOrder?.status) && (
+        {/* Cancellation / Doorstep Return Actions */}
+        {currentOrder?.status === 'CONFIRMED' && (
           <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F0F4F2', display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
@@ -541,13 +680,47 @@ export default function OrderTrackingPage() {
                 gap: '6px'
               }}
             >
-              Cancel Order
+              <XCircle size={14} />
+              <span>Cancel Order</span>
+            </button>
+          </div>
+        )}
+
+        {currentOrder?.status === 'OUT_FOR_DELIVERY' && (
+          <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F0F4F2', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsDoorstepModalOpen(true);
+                setDoorstepReason('Produce Quality Damaged / Spoiled / Rotten');
+                setDoorstepNotes('');
+                setIsConfirmingDoorstep(false);
+                setCancelErrorMsg('');
+              }}
+              style={{
+                background: '#FFF1F2',
+                color: '#BE123C',
+                border: '1.5px solid #FDA4AF',
+                padding: '8px 18px',
+                borderRadius: '9999px',
+                fontSize: '12.5px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(190, 18, 60, 0.15)'
+              }}
+              title="Inspect produce upon driver arrival and return/reject if quality is damaged"
+            >
+              <XCircle size={14} />
+              <span>Reject / Return at Doorstep</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* CANCELLATION MODAL */}
+      {/* CANCELLATION MODAL (PRE-PACKING) */}
       {isCancelModalOpen && (
         <div style={{
           position: 'fixed',
@@ -652,6 +825,288 @@ export default function OrderTrackingPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= DOORSTEP PRODUCE INSPECTION & REJECTION MODAL (OPTION A) ================= */}
+      {isDoorstepModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.55)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '480px',
+            width: '100%',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            position: 'relative'
+          }}>
+            <button
+              type="button"
+              onClick={() => setIsDoorstepModalOpen(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#FFF1F2', color: '#E11D48', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', border: '1.5px solid #FDA4AF' }}>
+                <XCircle size={26} />
+              </div>
+              <h3 style={{ fontSize: '18px', color: '#15221B', margin: 0, fontWeight: 800 }}>
+                Doorstep Produce Return & Rejection
+              </h3>
+              <p style={{ color: '#52635A', fontSize: '12.5px', margin: '6px 0 0', lineHeight: 1.4 }}>
+                Produce has arrived with the delivery executive. Inspect your produce now; if items are damaged or unacceptable, reject here.
+              </p>
+            </div>
+
+            {cancelErrorMsg && (
+              <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', color: '#B91C1C', fontSize: '12px', marginBottom: '14px' }}>
+                {cancelErrorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmDoorstepRejection}>
+              {/* Reason */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#234B3C', marginBottom: '6px' }}>
+                  Doorstep Rejection Reason:
+                </label>
+                <select
+                  value={doorstepReason}
+                  onChange={(e) => setDoorstepReason(e.target.value)}
+                  className="form-input-control"
+                  style={{ width: '100%', height: '38px', borderRadius: '8px', border: '1.5px solid #CBD5E1', padding: '0 10px', fontSize: '12.5px', boxSizing: 'border-box' }}
+                >
+                  <option value="Produce Quality Damaged / Spoiled / Rotten">Produce Quality Damaged / Spoiled / Rotten</option>
+                  <option value="Incorrect Produce / Wrong Item Delivered">Incorrect Produce / Wrong Item Delivered</option>
+                  <option value="Crate Sealed Damaged / Crushed Produce">Crate Sealed Damaged / Crushed Produce</option>
+                  <option value="Resident Refused Delivery at Doorstep">Resident Refused Delivery at Doorstep</option>
+                  <option value="Resident Not Available at Drop Time">Resident Not Available at Drop Time</option>
+                  <option value="Other Exception">Other Exception</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#234B3C', marginBottom: '6px' }}>
+                  Inspection Details / Notes (Optional):
+                </label>
+                <input
+                  type="text"
+                  value={doorstepNotes}
+                  onChange={(e) => setDoorstepNotes(e.target.value)}
+                  placeholder="e.g. Tomatoes overripe, grapes crushed in bag"
+                  style={{ width: '100%', height: '38px', borderRadius: '8px', border: '1.5px solid #CBD5E1', padding: '0 10px', fontSize: '12.5px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Photo Upload */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#234B3C', marginBottom: '6px' }}>
+                  Photo of Damaged Produce (Optional, Max 4):
+                </label>
+                {doorstepPhotos.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                    {doorstepPhotos.map((photo, pIdx) => (
+                      <div key={pIdx} style={{ position: 'relative', width: '54px', height: '54px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #CBD5E1' }}>
+                        <img src={photo} alt={`Proof ${pIdx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          type="button"
+                          onClick={() => setDoorstepPhotos(prev => prev.filter((_, i) => i !== pIdx))}
+                          style={{
+                            position: 'absolute',
+                            top: '2px',
+                            right: '2px',
+                            background: '#DC2626',
+                            color: '#FFF',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '16px',
+                            height: '16px',
+                            fontSize: '9px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {doorstepPhotos.length < 4 && (
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px dashed #CBD5E1',
+                    background: '#F8FAFC',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: '#2563EB'
+                  }}>
+                    <Camera size={16} />
+                    <span>{doorstepPhotos.length > 0 ? '＋ Add Another Photo' : '📸 Snap Photo with Camera'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      multiple
+                      onChange={handleDoorstepPhotoCapture}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Confirmation Step */}
+              {isConfirmingDoorstep ? (
+                <div style={{
+                  background: '#FFF1F2',
+                  border: '1.5px solid #F43F5E',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#9F1239', fontWeight: 800, fontSize: '13px' }}>
+                    <AlertCircle size={16} color="#E11D48" />
+                    <span>Confirm Doorstep Produce Return?</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#4C0519', lineHeight: 1.4 }}>
+                    • The driver will seal and return the produce crate to the warehouse hub.<br />
+                    • {isCod
+                      ? 'No payment collected. Order marked as returned.'
+                      : `A full refund of ₹${currentOrder?.totalAmount} will be immediately initiated to your original payment source.`}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingDoorstep(false)}
+                      style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '12px', fontWeight: 700, cursor: 'pointer', color: '#475569' }}
+                    >
+                      ← Go Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCancellingDoorstep}
+                      style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#DC2626', color: '#FFF', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      {isCancellingDoorstep ? 'Submitting...' : 'Yes, Confirm Rejection'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDoorstepModalOpen(false)}
+                    style={{ flex: 1, padding: '10px', background: '#F1F5F9', border: 'none', borderRadius: '9999px', fontWeight: 700, fontSize: '12.5px', cursor: 'pointer', color: '#475569' }}
+                  >
+                    Keep Produce
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingDoorstep(true)}
+                    style={{ flex: 2, padding: '10px', background: '#DC2626', color: '#FFF', border: 'none', borderRadius: '9999px', fontWeight: 800, fontSize: '12.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <XCircle size={15} />
+                    <span>Review & Reject Produce ➔</span>
+                  </button>
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox / Proof Photo Zoom Modal */}
+      {previewProofPhotoModal && (
+        <div 
+          onClick={() => setPreviewProofPhotoModal(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '20px',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div 
+            style={{ 
+              maxWidth: '520px', 
+              width: '100%', 
+              background: '#0F172A', 
+              borderRadius: '14px', 
+              overflow: 'hidden',
+              position: 'relative',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+              margin: 'auto'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewProofPhotoModal(null)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'rgba(0,0,0,0.6)',
+                color: '#FFF',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                fontSize: '14px'
+              }}
+            >
+              ✕
+            </button>
+            <img 
+              src={previewProofPhotoModal} 
+              alt="Return / Cancellation Proof" 
+              style={{ width: '100%', maxHeight: '75vh', objectFit: 'contain', display: 'block' }}
+            />
+            <div style={{ padding: '12px 16px', background: '#1E293B', color: '#F1F5F9', fontSize: '12.5px', fontWeight: 700, textAlign: 'center' }}>
+              Doorstep Return & Inspection Photo Proof
+            </div>
           </div>
         </div>
       )}

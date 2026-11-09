@@ -43,69 +43,93 @@ export default function CustomerNotificationBell() {
     const list = [];
     const orders = Array.isArray(store?.orders) ? store.orders : [];
 
+    // Helper to normalize phone numbers for robust matching
+    const normalize = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+    const userPhoneNorm = normalize(activeUser?.phone);
+
     // 1. Resident Customer Notifications
     if (activeUser) {
-      const myOrders = orders.filter(
-        o => o.userPhone === activeUser.phone || o.userId === activeUser.phone || o.userId === activeUser.id
-      );
+      const myOrders = orders.filter(o => {
+        if (!o) return false;
+        if (userPhoneNorm && normalize(o.userPhone) === userPhoneNorm) return true;
+        if (userPhoneNorm && normalize(o.userId) === userPhoneNorm) return true;
+        if (activeUser.id && (o.userId === activeUser.id || o.userPhone === activeUser.id)) return true;
+        return false;
+      });
 
-      myOrders.slice(0, 8).forEach(o => {
+      myOrders.slice(0, 10).forEach(o => {
+        const orderDateStr = o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '';
+        const orderTimeStr = o.createdAt ? new Date(o.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+        // Status milestone notifications
         if (o.status === 'DELIVERED') {
           list.push({
             id: `cust-deliv-${o.id}`,
             icon: '✅',
             title: `Order #${o.id} Delivered`,
-            desc: `Delivered to ${o.flatNo || 'your flat'}${o.freshCoinsEarned ? ` · +${o.freshCoinsEarned} FreshCoins earned!` : ''}`,
-            route: `/track/${o.id}`,
+            desc: `Delivered to Flat ${o.flatNo || 'your door'}${o.freshCoinsEarned ? ` · +${o.freshCoinsEarned} FreshCoins earned!` : ''}`,
+            route: `/tracking/${o.id}`,
             badge: 'DELIVERED',
             badgeBg: '#ECFDF5',
-            badgeColor: '#059669'
+            badgeColor: '#059669',
+            time: o.deliveredAt ? new Date(o.deliveredAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : orderTimeStr
           });
-        } else if (o.status === 'OUT_FOR_DELIVERY') {
+        }
+
+        if (o.status === 'OUT_FOR_DELIVERY' || o.status === 'DELIVERED') {
           list.push({
             id: `cust-ofd-${o.id}`,
             icon: '🛵',
-            title: `Order #${o.id} is Out for Delivery`,
-            desc: `${o.deliveryPartnerName ? `${o.deliveryPartnerName} is on the way` : 'Driver dispatched'} · ${o.deliverySlot || ''}`,
-            route: `/track/${o.id}`,
+            title: `Order #${o.id} Dispatched & Out for Delivery`,
+            desc: `${o.deliveryPartnerName ? `${o.deliveryPartnerName} is on the way` : 'Driver dispatched'} · ${o.deliverySlot || 'Scheduled drop'}`,
+            route: `/tracking/${o.id}`,
             badge: 'ON THE WAY',
             badgeBg: '#EFF6FF',
-            badgeColor: '#1D4ED8'
+            badgeColor: '#1D4ED8',
+            time: o.dispatchedAt ? new Date(o.dispatchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : orderTimeStr
           });
-        } else if (o.status === 'PACKED') {
+        }
+
+        if (['PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(o.status)) {
           list.push({
             id: `cust-pack-${o.id}`,
             icon: '📦',
             title: `Order #${o.id} Packed at Hub`,
-            desc: `Freshly packed & ready for your ${o.deliverySlot || 'scheduled'} drop`,
-            route: `/track/${o.id}`,
+            desc: `Fresh produce crate inspected & sealed for ${o.societyName || 'your society'}`,
+            route: `/tracking/${o.id}`,
             badge: 'PACKED',
             badgeBg: '#FEF3C7',
-            badgeColor: '#B45309'
+            badgeColor: '#B45309',
+            time: orderTimeStr
           });
-        } else if (o.status === 'CANCELLED') {
+        }
+
+        if (o.status === 'CANCELLED') {
           list.push({
             id: `cust-canc-${o.id}`,
             icon: '❌',
             title: `Order #${o.id} Cancelled`,
-            desc: o.paymentMethod !== 'PAY_ON_DELIVERY' ? 'Prepaid refund initiated to original source' : 'Order was cancelled',
-            route: `/track/${o.id}`,
+            desc: o.paymentMethod !== 'PAY_ON_DELIVERY' ? 'Prepaid refund initiated to original payment source' : 'Order was cancelled / returned',
+            route: `/tracking/${o.id}`,
             badge: 'CANCELLED',
             badgeBg: '#FEF2F2',
-            badgeColor: '#DC2626'
-          });
-        } else {
-          list.push({
-            id: `cust-conf-${o.id}`,
-            icon: '🌱',
-            title: `Order #${o.id} Confirmed`,
-            desc: `Scheduled for ${o.deliveryDate || ''} (${o.deliverySlot || ''})`,
-            route: `/track/${o.id}`,
-            badge: 'CONFIRMED',
-            badgeBg: '#ECFDF5',
-            badgeColor: '#059669'
+            badgeColor: '#DC2626',
+            time: o.cancelledAt ? new Date(o.cancelledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : orderTimeStr
           });
         }
+
+        // Always show the initial confirmation milestone
+        list.push({
+          id: `cust-conf-${o.id}`,
+          icon: '🌱',
+          title: `Order #${o.id} Confirmed`,
+          desc: `Farm produce reserved for ${o.deliveryDate || 'scheduled delivery'} (${o.deliverySlot || ''})`,
+          route: `/tracking/${o.id}`,
+          badge: 'CONFIRMED',
+          badgeBg: '#ECFDF5',
+          badgeColor: '#059669',
+          time: orderDateStr || orderTimeStr
+        });
       });
     }
 
@@ -292,17 +316,19 @@ export default function CustomerNotificationBell() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                         <strong style={{ fontSize: '12px', color: '#0F172A' }}>{n.title}</strong>
-                        <span style={{
-                          fontSize: '9px',
-                          fontWeight: 800,
-                          padding: '1px 5px',
-                          borderRadius: '4px',
-                          background: n.badgeBg,
-                          color: n.badgeColor,
-                          flexShrink: 0
-                        }}>
-                          {n.badge}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          {n.time && <span style={{ fontSize: '10px', color: '#94A3B8' }}>{n.time}</span>}
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            background: n.badgeBg,
+                            color: n.badgeColor,
+                          }}>
+                            {n.badge}
+                          </span>
+                        </div>
                       </div>
                       <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>
                         {n.desc}
