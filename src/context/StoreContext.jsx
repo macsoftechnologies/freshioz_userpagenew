@@ -303,6 +303,13 @@ export function StoreProvider({ children }) {
     };
   };
 
+  const cartGrossSubtotal = Number(
+    cart.reduce((acc, item) => {
+      const pricing = getProductBulkPricing(item, item.qty);
+      return acc + (pricing.totalWithoutDiscount || (item.price * item.qty));
+    }, 0).toFixed(2)
+  );
+
   const cartSubtotal = Number(
     cart.reduce((acc, item) => {
       const pricing = getProductBulkPricing(item, item.qty);
@@ -572,6 +579,7 @@ export function StoreProvider({ children }) {
         updateCartQty,
         removeFromCart,
         clearCart,
+        cartGrossSubtotal,
         cartSubtotal,
         totalBulkSavings,
         getProductBulkPricing,

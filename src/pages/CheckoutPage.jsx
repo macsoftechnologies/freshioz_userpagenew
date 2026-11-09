@@ -39,7 +39,8 @@ export default function CheckoutPage() {
     defaultWarehouse, 
     placeOrder,
     totalBulkSavings,
-    getProductBulkPricing
+    getProductBulkPricing,
+    cartGrossSubtotal
   } = useStore();
 
   const warehouseSlots = (Array.isArray(defaultWarehouse?.slots) && defaultWarehouse.slots.length > 0)
@@ -883,7 +884,7 @@ export default function CheckoutPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #E5ECE7', paddingTop: '14px', marginBottom: '20px' }}>
             <div className="bill-summary-row">
               <span>Produce Subtotal</span>
-              <span>₹{cartSubtotal}</span>
+              <span>₹{totalBulkSavings > 0 ? cartGrossSubtotal : cartSubtotal}</span>
             </div>
             {totalBulkSavings > 0 && (
               <div className="bill-summary-row" style={{ color: '#16A34A', fontWeight: 700 }}>

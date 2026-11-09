@@ -12,6 +12,7 @@ export default function SlideOverCart() {
     updateCartQty, 
     removeFromCart, 
     clearCart, 
+    cartGrossSubtotal,
     cartSubtotal, 
     cartItemCount,
     cartGst,
@@ -85,8 +86,8 @@ export default function SlideOverCart() {
         }}>
           <Clock size={16} color="#F28E14" />
           <div>
-            <div>Scheduled Delivery: <strong>{cutoffInfo.deliveryDayLabel} ({cutoffInfo.formattedDeliveryDate})</strong></div>
-            <div style={{ fontSize: '11px', color: '#52635A' }}>Morning Slot: 06:30 AM – 08:30 AM (Society Drop Desk)</div>
+            <div>Estimated Delivery: <strong>{cutoffInfo.deliveryDayLabel} ({cutoffInfo.formattedDeliveryDate})</strong></div>
+            <div style={{ fontSize: '11px', color: '#52635A' }}>Society Drop Desk • Select preferred slot at checkout</div>
           </div>
         </div>
 
@@ -202,7 +203,7 @@ export default function SlideOverCart() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div className="bill-summary-row">
                 <span>Items Subtotal</span>
-                <span>₹{cartSubtotal}</span>
+                <span>₹{totalBulkSavings > 0 ? cartGrossSubtotal : cartSubtotal}</span>
               </div>
               {totalBulkSavings > 0 && (
                 <div className="bill-summary-row" style={{ color: '#16A34A', fontWeight: 700 }}>
