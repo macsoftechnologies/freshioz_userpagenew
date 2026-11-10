@@ -531,7 +531,13 @@ export default function AuthModal() {
             {/* Select Society / Hostel with Search Recommendations & Non-Editable Verified Address */}
             <div className="modern-form-group" style={{ marginBottom: '14px' }}>
               <div className="label-with-action-row">
-                <label className="modern-field-label">Select Apartment or Hostel *</label>
+                <label 
+                  className="modern-field-label"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setIsSocietyDropdownOpen(prev => !prev)}
+                >
+                  Select Apartment or Hostel *
+                </label>
                 <button
                   type="button"
                   onClick={() => {
@@ -565,8 +571,8 @@ export default function AuthModal() {
                       setSocietySearchTerm(e.target.value);
                       setIsSocietyDropdownOpen(true);
                     }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ flex: 1, paddingRight: '36px' }}
+                    onClick={() => setIsSocietyDropdownOpen(true)}
+                    style={{ flex: 1, paddingRight: '36px', cursor: 'pointer' }}
                   />
                   <div 
                     style={{ 
