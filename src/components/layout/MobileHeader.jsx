@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, Search, ShoppingBag, X } from 'lucide-react';
+import { Menu, Search, ShoppingBag, X, User } from 'lucide-react';
 import FreshiozLogo from '../common/FreshiozLogo';
 import CustomerNotificationBell from '../common/CustomerNotificationBell';
 import { useStore } from '../../context/StoreContext';
@@ -12,7 +12,10 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
     setIsMobileDrawerOpen, 
     cartItemCount, 
     cartSubtotal,
-    setIsCartOpen 
+    setIsCartOpen,
+    activeUser,
+    setIsAuthModalOpen,
+    partnerAuth
   } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +37,46 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
           <FreshiozLogo height={48} showTagline={false} />
         </div>
 
-        <div className="mobile-right-cluster" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="mobile-right-cluster" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Visitor Login or Resident Profile Pill */}
+          {activeUser ? (
+            <button
+              type="button"
+              className="mobile-login-trigger-btn logged-in"
+              onClick={() => navigate('/profile')}
+              aria-label="Resident profile"
+              title="View resident profile"
+            >
+              <span className="mobile-user-initial">
+                {activeUser.name?.[0]?.toUpperCase() || 'U'}
+              </span>
+              <span className="mobile-user-name">
+                {activeUser.name ? activeUser.name.split(' ')[0] : 'Profile'}
+              </span>
+            </button>
+          ) : partnerAuth ? (
+            <button
+              type="button"
+              className="mobile-login-trigger-btn logged-in"
+              onClick={() => navigate('/society-portal')}
+              aria-label="Partner desk"
+              title="View partner desk"
+            >
+              <span className="mobile-user-initial">P</span>
+              <span className="mobile-user-name">Partner</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="mobile-login-trigger-btn"
+              onClick={() => setIsAuthModalOpen(true)}
+              aria-label="Sign In or Register"
+            >
+              <User size={13} color="#234B3C" />
+              <span>Sign In</span>
+            </button>
+          )}
+
           <CustomerNotificationBell />
           <button
             type="button"
