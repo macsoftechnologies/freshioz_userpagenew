@@ -36,24 +36,30 @@ import { paymentService } from '../services/paymentService';
 export function parseCancelReasonProof(reasonStr) {
   if (!reasonStr) return { cleanReason: 'Order cancelled', photos: [] };
   let photos = [];
-  if (reasonStr.includes(' [PROOF_PHOTOS]')) {
-    const parts = reasonStr.split(' [PROOF_PHOTOS]');
+
+  // 1. Extract JSON photos array if present
+  if (reasonStr.includes('[PROOF_PHOTOS]')) {
+    const parts = reasonStr.split('[PROOF_PHOTOS]');
     try {
-      const parsed = JSON.parse(parts[1] || '[]');
-      if (Array.isArray(parsed)) photos = parsed;
+      const parsed = JSON.parse((parts[1] || '').trim());
+      if (Array.isArray(parsed)) photos = parsed.filter(Boolean);
     } catch (e) {}
   }
-  if (photos.length === 0 && reasonStr.includes(' [PROOF_PHOTO]')) {
-    const singlePart = reasonStr.split(' [PROOF_PHOTO]')[1];
+
+  // 2. Fallback to single photo if photos array is empty
+  if (photos.length === 0 && reasonStr.includes('[PROOF_PHOTO]')) {
+    const singlePart = reasonStr.split('[PROOF_PHOTO]')[1];
     if (singlePart) {
-      const cleanPhoto = singlePart.split(' ')[0].trim();
+      const cleanPhoto = singlePart.split(/\s|\[/)[0].trim();
       if (cleanPhoto) photos = [cleanPhoto];
     }
   }
+
+  // 3. Strip any [PROOF_PHOTO] or [PROOF_PHOTOS] tokens and everything after them from the displayed reason
   const cleanReason = reasonStr
-    .split(' [PROOF_PHOTO]')[0]
-    .split(' [PROOF_PHOTOS]')[0]
+    .split(/\[PROOF_PHOTO\]|\[PROOF_PHOTOS\]/i)[0]
     .trim();
+
   return { cleanReason: cleanReason || 'Order cancelled', photos };
 }
 
@@ -3601,6 +3607,20 @@ export default function UserProfilePage({ forcedTab }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', fontWeight: 700 }}>
                       <span>Volume Savings:</span>
                       <span>-₹{viewingReceiptOrder.bulkSavings}</span>
+                    </div>
+                  )}
+
+                  {Number(viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst) > 0 ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52635A' }}>
+                      <span>Order GST:</span>
+                      <span style={{ fontWeight: 700, color: '#15221B' }}>
+                        +₹{Number(viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', fontSize: '11.5px' }}>
+                      <span>GST (0% Exempt Produce):</span>
+                      <span style={{ fontWeight: 700 }}>₹0</span>
                     </div>
                   )}
 

@@ -30,6 +30,8 @@ export default function CheckoutPage() {
     clearCart,
     cartSubtotal, 
     cartGst,
+    activeGstPercent,
+    globalGstPercent,
     deliveryFee,
     freeDeliveryThreshold,
     selectedSociety, 
@@ -896,10 +898,15 @@ export default function CheckoutPage() {
               <span>Next-Day Delivery Fee</span>
               <span>{deliveryFee === 0 ? <strong style={{ color: '#78B159' }}>FREE</strong> : `₹${deliveryFee}`}</span>
             </div>
-            {cartGst > 0 && (
+            {cartGst > 0 ? (
               <div className="bill-summary-row">
-                <span>GST / Taxes</span>
+                <span>GST / Taxes ({activeGstPercent || globalGstPercent}%)</span>
                 <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{cartGst}</span>
+              </div>
+            ) : (
+              <div className="bill-summary-row" style={{ color: '#16A34A', fontSize: '11.5px' }}>
+                <span>GST (0% Statutory Exempt)</span>
+                <span style={{ fontWeight: 700 }}>₹0</span>
               </div>
             )}
             {discountDeduction > 0 && (

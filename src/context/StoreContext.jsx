@@ -292,6 +292,27 @@ export function StoreProvider({ children }) {
 
   const clearCart = () => setCart([]);
 
+  // Synchronize cart items with live product catalog (prices, units, gstPercent)
+  useEffect(() => {
+    if (!store.products || store.products.length === 0 || cart.length === 0) return;
+    setCart(prev => {
+      let changed = false;
+      const updated = prev.map(item => {
+        const liveProd = store.products.find(p => p.id === (item.productId || item.id));
+        if (liveProd && (liveProd.gstPercent !== item.gstPercent || liveProd.retailPrice !== item.price)) {
+          changed = true;
+          return {
+            ...item,
+            price: liveProd.retailPrice || item.price,
+            gstPercent: liveProd.gstPercent ?? 0
+          };
+        }
+        return item;
+      });
+      return changed ? updated : prev;
+    });
+  }, [store.products]);
+
   // Quantity-based bulk volume tier calculation (e.g. above 5kg or 10kg gets discount %)
   const getProductBulkPricing = (productOrItem, qty) => {
     const prod = (store.products || []).find(p => p.id === (productOrItem?.productId || productOrItem?.id)) || productOrItem || {};
@@ -346,14 +367,49 @@ export function StoreProvider({ children }) {
 
   const cartItemCount = cart.reduce((acc, item) => acc + item.qty, 0);
 
-  // Calculate dynamic GST for current items in cart:
-  // Option 1: Consolidated Order-Level GST % based on sum of all products
-  const globalGstPercent = Number(store.deliveryConfig?.gstPercent ?? 0);
-  const cartGst = Math.round(
-    globalGstPercent > 0 
-      ? (cartSubtotal * globalGstPercent) / 100 
-      : 0
-  );
+  // Dynamic consolidated Order-Level GST %:
+  // Dynamically resolve active GST % from live catalog produce items or cart items
+  const activeGstPercent = useMemo(() => {
+    // 1. Check live catalog products first (contains live published GST rates from daily pricing)
+    const catalogItemWithGst = (store.products || []).find(p => typeof p.gstPercent === 'number' && p.gstPercent > 0);
+    if (catalogItemWithGst) {
+      return catalogItemWithGst.gstPercent;
+    }
+    // 2. Fallback to items in cart
+    for (const item of cart) {
+      if (typeof item.gstPercent === 'number' && item.gstPercent > 0) {
+        return item.gstPercent;
+      }
+    }
+    return 0;
+  }, [store.products, cart]);
+
+  const globalGstPercent = activeGstPercent;
+
+  // Calculate dynamic GST for current items in cart on the net produce subtotal
+  const cartGst = useMemo(() => {
+    if (cart.length === 0 || cartSubtotal <= 0) return 0;
+    
+    // If unified order GST rate is active (> 0), apply on cartSubtotal
+    if (activeGstPercent > 0) {
+      return Math.round((cartSubtotal * activeGstPercent) / 100);
+    }
+
+    // Fallback: Check if individual products in cart have GST specified
+    let itemSum = 0;
+    for (const item of cart) {
+      const liveProd = (store.products || []).find(p => p.id === (item.productId || item.id));
+      const rate = (typeof liveProd?.gstPercent === 'number') 
+        ? liveProd.gstPercent 
+        : (typeof item.gstPercent === 'number' ? item.gstPercent : 0);
+      if (rate > 0) {
+        const pricing = getProductBulkPricing(item, item.qty);
+        const lineTotal = pricing.totalWithDiscount || (item.price * item.qty);
+        itemSum += (lineTotal * (rate / 100));
+      }
+    }
+    return Math.round(itemSum);
+  }, [cart, cartSubtotal, activeGstPercent, store.products]);
 
   // Dynamic delivery fee calculation from store.deliveryConfig
   const deliveryConfig = store.deliveryConfig || { baseFee: 25, freeDeliveryThreshold: 199, enableFreeDelivery: true };
@@ -605,6 +661,7 @@ export function StoreProvider({ children }) {
         cartItemCount,
         cartGst,
         globalGstPercent,
+        activeGstPercent,
         deliveryConfig,
         deliveryFee,
         freeDeliveryThreshold,

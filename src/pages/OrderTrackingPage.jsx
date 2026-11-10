@@ -554,8 +554,13 @@ export default function OrderTrackingPage() {
                 <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'Outfit', color: '#15221B' }}>
                   {currentOrder?.deliveryDate} • {currentOrder?.deliverySlot}
                 </div>
-                <div style={{ fontSize: '12.5px', color: '#52635A', marginTop: '2px' }}>
-                  🏢 {currentOrder?.societyName} ({currentOrder?.flatNo})
+                <div style={{ fontSize: '12.5px', color: '#52635A', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span>🏢 {currentOrder?.societyName} ({currentOrder?.flatNo})</span>
+                  {currentOrder?.deliveryPartnerName && (
+                    <span style={{ background: '#E0F2FE', color: '#0369A1', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '11.5px' }}>
+                      🚚 Rider: {currentOrder.deliveryPartnerName} {currentOrder.vehicleNumber ? `(${currentOrder.vehicleNumber})` : ''}
+                    </span>
+                  )}
                 </div>
               </div>
 
