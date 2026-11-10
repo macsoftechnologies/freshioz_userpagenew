@@ -26,14 +26,16 @@ export default function MobileHeader({ searchQuery = '', onSearchChange }) {
     <header className="mobile-header-wrap">
       <div className="mobile-header-top">
         <div className="mobile-left-cluster">
-          <button 
-            type="button" 
-            className="mobile-menu-btn"
-            onClick={() => setIsMobileDrawerOpen(true)}
-            aria-label="Open navigation drawer"
-          >
-            <Menu size={22} />
-          </button>
+          {(activeUser || partnerAuth) && (
+            <button 
+              type="button" 
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileDrawerOpen(true)}
+              aria-label="Open navigation drawer"
+            >
+              <Menu size={22} />
+            </button>
+          )}
           <FreshiozLogo height={48} showTagline={false} />
         </div>
 
