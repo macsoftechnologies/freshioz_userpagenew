@@ -68,7 +68,7 @@ export default function AuthModal() {
   const [societySearchTerm, setSocietySearchTerm] = useState('');
   const [isSocietyDropdownOpen, setIsSocietyDropdownOpen] = useState(false);
 
-  // Close society dropdown on outside click
+  // Close society dropdown on outside click or touch
   useEffect(() => {
     function handleClickOutside(event) {
       if (societyDropdownRef.current && !societyDropdownRef.current.contains(event.target)) {
@@ -76,8 +76,36 @@ export default function AuthModal() {
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
+
+  // Pre-select current store society if not yet selected in register form
+  useEffect(() => {
+    if (!registerData.societyId && (selectedSociety?.id || approvedSocieties[0]?.id)) {
+      setRegisterData(prev => ({
+        ...prev,
+        societyId: prev.societyId || selectedSociety?.id || approvedSocieties[0]?.id
+      }));
+    }
+  }, [selectedSociety?.id, approvedSocieties]);
+
+  // Ensure dropdown scrolls into view when opened on mobile devices
+  useEffect(() => {
+    if (isSocietyDropdownOpen && societyDropdownRef.current) {
+      societyDropdownRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [isSocietyDropdownOpen]);
+
+  const handleSelectSociety = (soc) => {
+    setRegisterData(prev => ({ ...prev, societyId: soc.id }));
+    setIsSocietyDropdownOpen(false);
+    setSocietySearchTerm('');
+    if (fieldErrors.societyId) setFieldErrors(prev => ({ ...prev, societyId: null }));
+  };
 
   if (!isAuthModalOpen) return null;
 
@@ -554,7 +582,7 @@ export default function AuthModal() {
               <div ref={societyDropdownRef} style={{ position: 'relative' }}>
                 <div 
                   className={`modern-input-wrapper ${fieldErrors.societyId ? 'has-error' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative' }}
                   onClick={() => setIsSocietyDropdownOpen(prev => !prev)}
                 >
                   <Building2 size={16} className="input-prefix-icon" color={currentSelectedSociety ? '#059669' : '#64748B'} />
@@ -563,7 +591,8 @@ export default function AuthModal() {
                     className="modern-text-input"
                     placeholder="Search or select your apartment or hostel..."
                     value={isSocietyDropdownOpen ? societySearchTerm : (currentSelectedSociety?.name || societySearchTerm)}
-                    onFocus={() => {
+                    onFocus={(e) => {
+                      e.stopPropagation();
                       setIsSocietyDropdownOpen(true);
                       setSocietySearchTerm('');
                     }}
@@ -571,17 +600,28 @@ export default function AuthModal() {
                       setSocietySearchTerm(e.target.value);
                       setIsSocietyDropdownOpen(true);
                     }}
-                    onClick={() => setIsSocietyDropdownOpen(true)}
-                    style={{ flex: 1, paddingRight: '36px', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSocietyDropdownOpen(true);
+                    }}
+                    style={{ flex: 1, paddingRight: '40px', cursor: 'pointer' }}
                   />
                   <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSocietyDropdownOpen(prev => !prev);
+                    }}
                     style={{ 
                       position: 'absolute', 
-                      right: '12px', 
+                      right: '10px', 
                       top: '50%', 
                       transform: 'translateY(-50%)', 
-                      pointerEvents: 'none',
+                      cursor: 'pointer',
+                      padding: '4px',
                       color: '#64748B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       transition: 'transform 0.2s ease',
                       transformOrigin: 'center'
                     }}
@@ -594,19 +634,27 @@ export default function AuthModal() {
 
                 {/* Recommendations Dropdown List */}
                 {isSocietyDropdownOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 4px)',
-                    left: 0,
-                    right: 0,
-                    background: '#FFFFFF',
-                    borderRadius: '12px',
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
-                    border: '1.5px solid #CBD5E1',
-                    maxHeight: '220px',
-                    overflowY: 'auto',
-                    zIndex: 9999
-                  }}>
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      right: 0,
+                      background: '#FFFFFF',
+                      borderRadius: '12px',
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.18)',
+                      border: '1.5px solid #CBD5E1',
+                      maxHeight: '230px',
+                      overflowY: 'auto',
+                      WebkitOverflowScrolling: 'touch',
+                      touchAction: 'pan-y',
+                      zIndex: 9999
+                    }}
+                    onMouseDown={(e) => {
+                      // Prevent input blur so virtual keyboard doesn't dismiss and shift layout
+                      e.preventDefault();
+                    }}
+                  >
                     {filteredSocieties.length === 0 ? (
                       <div style={{ padding: '14px', textAlign: 'center', color: '#64748B', fontSize: '12.5px' }}>
                         No society found matching "{societySearchTerm}".
@@ -629,22 +677,30 @@ export default function AuthModal() {
                         return (
                           <div
                             key={soc.id}
-                            onClick={(e) => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                            }}
+                            onTouchEnd={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              setRegisterData(prev => ({ ...prev, societyId: soc.id }));
-                              setIsSocietyDropdownOpen(false);
-                              setSocietySearchTerm('');
-                              if (fieldErrors.societyId) setFieldErrors(prev => ({ ...prev, societyId: null }));
+                              handleSelectSociety(soc);
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleSelectSociety(soc);
                             }}
                             style={{
-                              padding: '10px 14px',
+                              padding: '11px 14px',
                               borderBottom: '1px solid #F1F5F9',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               background: isChosen ? '#F0FDF4' : 'transparent',
-                              transition: 'background 0.15s ease'
+                              transition: 'background 0.15s ease',
+                              userSelect: 'none',
+                              WebkitTapHighlightColor: 'rgba(5, 150, 105, 0.1)'
                             }}
                             onMouseEnter={(e) => { if (!isChosen) e.currentTarget.style.background = '#F8FAFC'; }}
                             onMouseLeave={(e) => { if (!isChosen) e.currentTarget.style.background = 'transparent'; }}
