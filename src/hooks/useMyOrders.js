@@ -6,9 +6,10 @@ export function useMyOrders(enabled = true) {
     queryKey: ['my-orders'],
     queryFn: () => orderService.getAll(),
     enabled: Boolean(enabled),
-    staleTime: 10_000,
-    refetchInterval: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 15_000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   return {
