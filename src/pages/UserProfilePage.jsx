@@ -3610,11 +3610,11 @@ export default function UserProfilePage({ forcedTab }) {
                     </div>
                   )}
 
-                  {Number(viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst) > 0 ? (
+                  {Number(viewingReceiptOrder.gstAmount || viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst) > 0 ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52635A' }}>
-                      <span>Order GST:</span>
+                      <span>Order GST / Taxes:</span>
                       <span style={{ fontWeight: 700, color: '#15221B' }}>
-                        +₹{Number(viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst)}
+                        +₹{Number(viewingReceiptOrder.gstAmount || viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst).toFixed(2)}
                       </span>
                     </div>
                   ) : (

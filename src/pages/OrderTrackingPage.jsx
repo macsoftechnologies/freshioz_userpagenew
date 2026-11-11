@@ -630,19 +630,42 @@ export default function OrderTrackingPage() {
           {currentOrder?.subtotal !== undefined && currentOrder?.subtotal > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
               <span>Items Subtotal</span>
-              <span>₹{currentOrder.subtotal}</span>
+              <span>₹{Number(currentOrder.subtotal).toFixed(2)}</span>
             </div>
           )}
           {currentOrder?.bulkSavings !== undefined && currentOrder?.bulkSavings > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669', fontWeight: 600 }}>
               <span>Volume Bulk Savings</span>
-              <span>-₹{currentOrder.bulkSavings}</span>
+              <span>-₹{Number(currentOrder.bulkSavings).toFixed(2)}</span>
             </div>
           )}
-          {currentOrder?.deliveryFee !== undefined && currentOrder?.deliveryFee > 0 && (
+          {currentOrder?.discountAmount !== undefined && Number(currentOrder?.discountAmount) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669', fontWeight: 600 }}>
+              <span>Reward Coupon ({currentOrder.discountCode || 'Applied'})</span>
+              <span>-₹{Number(currentOrder.discountAmount).toFixed(2)}</span>
+            </div>
+          )}
+          {currentOrder?.freshCoinsDiscount !== undefined && Number(currentOrder?.freshCoinsDiscount) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669', fontWeight: 600 }}>
+              <span>FreshCoins Savings ({currentOrder.freshCoinsUsed || 0} Coins)</span>
+              <span>-₹{Number(currentOrder.freshCoinsDiscount).toFixed(2)}</span>
+            </div>
+          )}
+          {Number(currentOrder?.gstAmount) > 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#334155', fontWeight: 600 }}>
+              <span>GST / Taxes (Dynamic Order Tax)</span>
+              <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{Number(currentOrder.gstAmount).toFixed(2)}</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#059669' }}>
+              <span>GST (0% Exempt Produce)</span>
+              <span>₹0.00</span>
+            </div>
+          )}
+          {currentOrder?.deliveryFee !== undefined && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#64748B' }}>
-              <span>Delivery Fee</span>
-              <span>₹{currentOrder.deliveryFee}</span>
+              <span>Community Delivery Fee</span>
+              <span>{Number(currentOrder.deliveryFee) > 0 ? `₹${Number(currentOrder.deliveryFee).toFixed(2)}` : 'FREE'}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', fontSize: '15px', fontWeight: 800, color: '#234B3C', borderTop: '1px dashed #E2E8F0', marginTop: '4px' }}>
