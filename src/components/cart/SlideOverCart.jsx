@@ -222,15 +222,10 @@ export default function SlideOverCart() {
                   Add ₹{freeDeliveryThreshold - cartSubtotal} more for Free Society Delivery!
                 </div>
               )}
-              {cartGst > 0 ? (
+              {cartGst > 0 && (
                 <div className="bill-summary-row">
-                  <span>GST / Taxes ({activeGstPercent || globalGstPercent}%)</span>
+                  <span>GST</span>
                   <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{cartGst}</span>
-                </div>
-              ) : (
-                <div className="bill-summary-row" style={{ color: '#16A34A', fontSize: '11.5px' }}>
-                  <span>GST (0% Statutory Exempt)</span>
-                  <span style={{ fontWeight: 700 }}>₹0</span>
                 </div>
               )}
               <div className="bill-total-row">
