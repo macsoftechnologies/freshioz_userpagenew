@@ -35,30 +35,32 @@ import { paymentService } from '../services/paymentService';
 
 export function parseCancelReasonProof(reasonStr) {
   if (!reasonStr) return { cleanReason: 'Order cancelled', photos: [] };
+  const raw = String(reasonStr);
   let photos = [];
 
   // 1. Extract JSON photos array if present
-  if (reasonStr.includes('[PROOF_PHOTOS]')) {
-    const parts = reasonStr.split('[PROOF_PHOTOS]');
+  const photosMatch = raw.match(/\[PROOF_PHOTOS\]\s*(\[[\s\S]*?\])(?=\s*\[|$)/i);
+  if (photosMatch && photosMatch[1]) {
     try {
-      const parsed = JSON.parse((parts[1] || '').trim());
+      const parsed = JSON.parse(photosMatch[1]);
       if (Array.isArray(parsed)) photos = parsed.filter(Boolean);
     } catch (e) {}
   }
 
   // 2. Fallback to single photo if photos array is empty
-  if (photos.length === 0 && reasonStr.includes('[PROOF_PHOTO]')) {
-    const singlePart = reasonStr.split('[PROOF_PHOTO]')[1];
-    if (singlePart) {
-      const cleanPhoto = singlePart.split(/\s|\[/)[0].trim();
-      if (cleanPhoto) photos = [cleanPhoto];
+  if (photos.length === 0) {
+    const singleMatch = raw.match(/\[PROOF_PHOTO\]\s*([^\s\[]+)(?=\s*\[|$)/i);
+    if (singleMatch && singleMatch[1]) {
+      photos = [singleMatch[1].trim()];
     }
   }
 
-  // 3. Strip any [PROOF_PHOTO] or [PROOF_PHOTOS] tokens and everything after them from the displayed reason
-  const cleanReason = reasonStr
-    .split(/\[PROOF_PHOTO\]|\[PROOF_PHOTOS\]/i)[0]
+  // 3. Strip any metadata tokens and everything after them from the displayed reason
+  let cleanReason = raw
+    .split(/\s*\[(AUDIT_RECORD|RETURNED_ITEMS|PROOF_PHOTOS|PROOF_PHOTO|REFUND_ID)/i)[0]
     .trim();
+
+  cleanReason = cleanReason.replace(/\[[^\]]*\]/g, '').trim();
 
   return { cleanReason: cleanReason || 'Order cancelled', photos };
 }
