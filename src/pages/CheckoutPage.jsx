@@ -1067,15 +1067,16 @@ export default function CheckoutPage() {
                   flex: 1,
                   padding: '12px 18px',
                   borderRadius: '10px',
-                  border: '1.5px solid #CBD5E1',
-                  background: '#FFFFFF',
-                  color: '#475569',
-                  fontWeight: 700,
+                  border: '1.5px solid #EA580C',
+                  background: '#FFF7ED',
+                  color: '#C2410C',
+                  fontWeight: 800,
                   fontSize: '13px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                Cancel / Review Basket
+                Review Basket
               </button>
 
               <button
@@ -1099,7 +1100,7 @@ export default function CheckoutPage() {
                 }}
               >
                 <CheckCircle2 size={16} />
-                <span>Yes, Confirm & Place Order</span>
+                <span>Confirm Order</span>
               </button>
             </div>
           </div>

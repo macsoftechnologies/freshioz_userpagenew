@@ -32,6 +32,7 @@ import { orderService } from '../services/orderService';
 import { discountService } from '../services/discountService';
 import { reviewService } from '../services/reviewService';
 import { paymentService } from '../services/paymentService';
+import FreshiozLogo from '../components/common/FreshiozLogo';
 
 export function parseCancelReasonProof(reasonStr) {
   if (!reasonStr) return { cleanReason: 'Order cancelled', photos: [] };
@@ -3482,8 +3483,8 @@ export default function UserProfilePage({ forcedTab }) {
               {/* Brand Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1.5px dashed #CBD5E1', paddingBottom: '16px' }}>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: 900, color: '#234B3C', letterSpacing: '-0.5px' }}>
-                    Freshioz
+                  <div style={{ marginBottom: '6px' }}>
+                    <FreshiozLogo height={38} />
                   </div>
                   <div style={{ fontSize: '11.5px', color: '#52635A', marginTop: '2px' }}>
                     Farm-Direct Fresh Produce • Dawn Mandi Harvest
@@ -3612,17 +3613,12 @@ export default function UserProfilePage({ forcedTab }) {
                     </div>
                   )}
 
-                  {Number(viewingReceiptOrder.gstAmount || viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst) > 0 ? (
+                  {Number(viewingReceiptOrder.gstAmount || viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52635A' }}>
-                      <span>Order GST / Taxes:</span>
+                      <span>GST:</span>
                       <span style={{ fontWeight: 700, color: '#15221B' }}>
                         +₹{Number(viewingReceiptOrder.gstAmount || viewingReceiptOrder.taxAmount || viewingReceiptOrder.tax || viewingReceiptOrder.gst).toFixed(2)}
                       </span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', fontSize: '11.5px' }}>
-                      <span>GST (0% Exempt Produce):</span>
-                      <span style={{ fontWeight: 700 }}>₹0</span>
                     </div>
                   )}
 

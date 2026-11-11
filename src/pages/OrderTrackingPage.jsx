@@ -279,6 +279,7 @@ export default function OrderTrackingPage() {
   const isCancelled = currentOrder?.status === 'CANCELLED';
   const isDelivered = currentOrder?.status === 'DELIVERED';
   const isCod = (currentOrder?.paymentMethod || '').includes('PAY_ON_DELIVERY') || currentOrder?.paymentStatus === 'PENDING_COD';
+  const { cleanReason, photos: cancelPhotos } = parseCancelReasonProof(currentOrder?.cancelledReason);
 
   return (
     <div className="section-container" style={{ paddingTop: '16px', paddingBottom: '50px', maxWidth: '840px' }}>
@@ -298,70 +299,6 @@ export default function OrderTrackingPage() {
         }}>
           <CheckCircle2 size={18} color="#059669" />
           <span>{cancelSuccessMsg}</span>
-        </div>
-      )}
-
-      {isCancelled && (
-        <div style={{
-          background: '#FFF5F5',
-          border: '1.5px solid #FED7D7',
-          borderRadius: '14px',
-          padding: '14px 18px',
-          color: '#9B2C2C',
-          marginBottom: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-          {(() => {
-            const { cleanReason, photos: cancelPhotos } = parseCancelReasonProof(currentOrder?.cancelledReason);
-            return (
-              <>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <AlertCircle size={20} color="#E53E3E" style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <div style={{ wordBreak: 'break-word', lineHeight: 1.4 }}>
-                    <strong>Order Cancelled:</strong> {cleanReason}
-                    {isCod ? ' • No payment collected (Pay on Delivery)' : ''}
-                  </div>
-                </div>
-
-                {cancelPhotos.length > 0 && (
-                  <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #FECACA' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#991B1B', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Camera size={13} />
-                      <span>Doorstep Return / Inspection Proof ({cancelPhotos.length} photo{cancelPhotos.length > 1 ? 's' : ''}):</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {cancelPhotos.map((photo, pIdx) => (
-                        <button
-                          key={pIdx}
-                          type="button"
-                          onClick={() => setPreviewProofPhotoModal(photo)}
-                          style={{
-                            padding: 0,
-                            border: '1.5px solid #FCA5A5',
-                            borderRadius: '6px',
-                            overflow: 'hidden',
-                            background: '#FFF',
-                            cursor: 'pointer',
-                            width: '54px',
-                            height: '54px'
-                          }}
-                          title="Click to enlarge photo proof"
-                        >
-                          <img
-                            src={photo}
-                            alt={`Proof ${pIdx + 1}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
         </div>
       )}
 
@@ -404,10 +341,167 @@ export default function OrderTrackingPage() {
       </div>
 
       {/* ========================================================
-          USER-FRIENDLY DELIVERED EXPERIENCE (Mobile, Tab & Desktop)
-          Clear-cut instructions with zero clutter
+          LIFECYCLE EXPERIENCES: CANCELLED, DELIVERED, OR IN PROGRESS
          ======================================================== */}
-      {isDelivered ? (
+      {isCancelled ? (
+        <div style={{
+          background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)',
+          borderRadius: '20px',
+          border: '2px solid #FCA5A5',
+          padding: '24px 20px',
+          boxShadow: '0 8px 30px rgba(220, 38, 38, 0.08)',
+          marginBottom: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: '#DC2626',
+            color: '#FFFFFF',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '12px',
+            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)'
+          }}>
+            <XCircle size={36} />
+          </div>
+
+          <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#991B1B', margin: '0 0 6px', fontFamily: 'Outfit, sans-serif' }}>
+            Order Cancelled
+          </h2>
+          <p style={{ fontSize: '13.5px', color: '#B91C1C', fontWeight: 600, margin: '0 0 16px' }}>
+            {cleanReason || 'This order was cancelled and will not be delivered.'}
+          </p>
+
+          {/* Doorstep Proof Photos if present */}
+          {cancelPhotos.length > 0 && (
+            <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px', textAlign: 'left' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#991B1B', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Camera size={13} />
+                <span>Doorstep Return / Inspection Proof ({cancelPhotos.length} photo{cancelPhotos.length > 1 ? 's' : ''}):</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {cancelPhotos.map((photo, pIdx) => (
+                  <button
+                    key={pIdx}
+                    type="button"
+                    onClick={() => setPreviewProofPhotoModal(photo)}
+                    style={{
+                      padding: 0,
+                      border: '1.5px solid #FCA5A5',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      background: '#FFF',
+                      cursor: 'pointer',
+                      width: '54px',
+                      height: '54px'
+                    }}
+                    title="Click to enlarge photo proof"
+                  >
+                    <img
+                      src={photo}
+                      alt={`Proof ${pIdx + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Clear-Cut Status & Refund Card */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '14px',
+            padding: '16px',
+            textAlign: 'left',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '12px',
+            border: '1px solid #FECACA',
+            marginBottom: '18px'
+          }}>
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                📅 Scheduled Date
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                {currentOrder?.deliveryDate || 'Today'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748B' }}>
+                {currentOrder?.deliverySlot || 'Morning Run'}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                🏢 Delivery Address
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                Flat {currentOrder?.flatNo || '—'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748B' }}>
+                {currentOrder?.societyName}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                💳 Payment & Refund
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: isCod ? '#64748B' : '#059669', marginTop: '2px' }}>
+                {isCod ? '₹0 Due (COD)' : `₹${currentOrder?.totalAmount} Refund Initiated`}
+              </div>
+              <div style={{ fontSize: '11.5px', color: isCod ? '#64748B' : '#166534', fontWeight: 700 }}>
+                {isCod ? '✓ Cancelled prior to delivery' : '✓ 100% Refund via original payment source'}
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#234B3C',
+                color: '#FFFFFF',
+                padding: '10px 22px',
+                borderRadius: '9999px',
+                fontSize: '13.5px',
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(35, 75, 60, 0.25)'
+              }}
+            >
+              <ShoppingBag size={15} />
+              <span>Order Tomorrow's Fresh Produce ➔</span>
+            </Link>
+            <Link
+              to="/orders"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#FFFFFF',
+                color: '#334155',
+                border: '1.5px solid #CBD5E1',
+                padding: '10px 20px',
+                borderRadius: '9999px',
+                fontSize: '13px',
+                fontWeight: 700,
+                textDecoration: 'none'
+              }}
+            >
+              <span>View All Orders</span>
+            </Link>
+          </div>
+        </div>
+      ) : isDelivered ? (
         <div style={{
           background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
           borderRadius: '20px',
@@ -651,15 +745,10 @@ export default function OrderTrackingPage() {
               <span>-₹{Number(currentOrder.freshCoinsDiscount).toFixed(2)}</span>
             </div>
           )}
-          {Number(currentOrder?.gstAmount) > 0 ? (
+          {Number(currentOrder?.gstAmount) > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#334155', fontWeight: 600 }}>
-              <span>GST / Taxes (Dynamic Order Tax)</span>
+              <span>GST</span>
               <span style={{ color: '#0F172A', fontWeight: 700 }}>+₹{Number(currentOrder.gstAmount).toFixed(2)}</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#059669' }}>
-              <span>GST (0% Exempt Produce)</span>
-              <span>₹0.00</span>
             </div>
           )}
           {currentOrder?.deliveryFee !== undefined && (
